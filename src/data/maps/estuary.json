@@ -1,0 +1,21 @@
+{
+  "id": "estuary",
+  "name": "River valley to estuary",
+  "width": 10,
+  "height": 10,
+  "rows": [
+    "PPmmLmmhhW",
+    "PmmmrmhhWW",
+    "mmwWrghhWw",
+    "wWwgrgghhw",
+    "Wwggr#gghw",
+    "ggfgr#gggh",
+    "gffgrggwwh",
+    "dfssrssgdd",
+    "dsSzrzsddo",
+    "ooozozoooo"
+  ],
+  "startingBuildings": { "#": "cottages" },
+  "startingBuildingHabitat": "meadow",
+  "elevation": "valleyFormula"
+}

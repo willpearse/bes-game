@@ -1,0 +1,24 @@
+{
+  "name": "green-and-pleasant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A pixel-art tile-placement game about the value of nature to a local economy.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "simulate": "node scripts/simulate.js"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
