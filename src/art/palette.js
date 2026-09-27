@@ -1,28 +1,28 @@
 // One restrained 16-colour palette. Sprites refer to these by hex index (0-f); '.' is transparent.
 export const PALETTE = [
-  '#1b1b24', // 0 ink
-  '#4a3b33', // 1 dark brown (peat, soil)
-  '#8a6142', // 2 brown (bare earth)
-  '#c9a36b', // 3 tan (sand, dry grass)
-  '#f2e6c2', // 4 cream (walls, dunes)
-  '#2f4a2f', // 5 dark green (forest)
-  '#4d7a3a', // 6 green
-  '#86b04a', // 7 light green
-  '#c8d86b', // 8 pale green
-  '#7a4f7a', // 9 heather purple
-  '#1f3a5c', // a deep sea
-  '#3a6ea5', // b water
-  '#7fb2d6', // c light water
-  '#b8433a', // d brick red
-  '#e8b53a', // e gold
-  '#8c8f99'  // f grey
+  '#3b2d3f', // 0 outline (soft plum)
+  '#5e4033', // 1 dark brown (peat, soil)
+  '#a0714c', // 2 brown (bare earth, wood)
+  '#dcb47e', // 3 tan (sand, dry grass)
+  '#fdf3dc', // 4 cream (walls, dunes, sheep)
+  '#2f6243', // 5 dark green (forest)
+  '#4f9c4f', // 6 green
+  '#8dcb5e', // 7 light green
+  '#d9ec8e', // 8 pale green
+  '#a578c2', // 9 heather purple
+  '#2a4f84', // a deep sea
+  '#4a8fd0', // b water
+  '#a4d8f2', // c light water
+  '#e8676a', // d red (roofs, cheeks)
+  '#f7cb52', // e gold
+  '#a3acbf'  // f grey
 ];
 
 export const hex = (i) => parseInt(PALETTE[i].slice(1), 16);
 
 // UI colours drawn from the palette.
 export const UI = {
-  bg: hex(0),
+  bg: 0x1b1b24,
   panel: 0x262633,
   panelLight: 0x333344,
   text: '#f2e6c2',

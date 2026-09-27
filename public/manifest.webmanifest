@@ -1,0 +1,15 @@
+{
+  "name": "Green and Pleasant",
+  "short_name": "Green & Pleasant",
+  "description": "Plan a corner of Britain and find out how much of its economy nature pays for.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1b1b24",
+  "theme_color": "#1b1b24",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

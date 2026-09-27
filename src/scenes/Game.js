@@ -3,7 +3,8 @@ import Phaser from 'phaser';
 import { GameSession } from '../session.js';
 import { UI, OVERLAY_COLOURS } from '../art/palette.js';
 import { natureKey } from '../art/textures.js';
-import { TILE, BOARD_X, BOARD_Y, BOARD_SIZE, cellToXY, cellCentre } from '../ui/layout.js';
+import { SPRITE_SIZE } from '../art/sprites.js';
+import { TILE, BOARD_X, BOARD_Y, BOARD_SIZE, cellToXY, cellCentre, setupCamera, logicalPointer } from '../ui/layout.js';
 import { text, fmt1 } from '../ui/widgets.js';
 import { flowTarget, wasteTokensAt } from '../engine/waste.js';
 import { cellAt } from '../engine/grid.js';
@@ -26,6 +27,7 @@ export class Game extends Phaser.Scene {
   }
 
   create() {
+    setupCamera(this);
     this.cameras.main.setBackgroundColor(UI.bg);
     const s = this.session;
     const st = s.state;
@@ -36,12 +38,12 @@ export class Game extends Phaser.Scene {
     for (const cell of st.cells) {
       const { x, y } = cellToXY(cell.row, cell.col);
       const v = {
-        ground: this.add.image(x, y, 'px').setOrigin(0).setScale(3).setDepth(0),
-        building: this.add.image(x, y, 'px').setOrigin(0).setScale(3).setDepth(1).setVisible(false),
-        primary: this.add.image(x, y, 'primaryMark').setOrigin(0).setScale(3).setDepth(2).setVisible(false),
-        reserve: this.add.image(x, y, 'reserveMark').setOrigin(0).setScale(3).setDepth(2).setVisible(false),
+        ground: this.add.image(x, y, 'px').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(0),
+        building: this.add.image(x, y, 'px').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(1).setVisible(false),
+        primary: this.add.image(x, y, 'primaryMark').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(2).setVisible(false),
+        reserve: this.add.image(x, y, 'reserveMark').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(2).setVisible(false),
         tint: this.add.rectangle(x, y, TILE, TILE, 0x000000, 0).setOrigin(0).setDepth(3),
-        waste: this.add.image(x + 2, y + TILE - 30, 'waste').setOrigin(0).setScale(2).setDepth(4).setVisible(false),
+        waste: this.add.image(x - 2, y + TILE - 30, 'waste').setOrigin(0).setScale(1).setDepth(4).setVisible(false),
         wasteText: text(this, x + 30, y + TILE - 20, '', { size: 12, bold: true }).setDepth(4),
         badge: text(this, x + TILE - 2, y + TILE - 2, '', { size: 12, bold: true, color: '#ffffff', origin: [1, 1] }).setDepth(6),
         debug: text(this, x + 2, y + 1, '', { size: 9, color: '#ffffff' }).setDepth(7)
@@ -90,8 +92,9 @@ export class Game extends Phaser.Scene {
   }
 
   pointerCell(p) {
-    const col = Math.floor((p.x - BOARD_X) / TILE);
-    const row = Math.floor((p.y - BOARD_Y) / TILE);
+    const pt = logicalPointer(this, p);
+    const col = Math.floor((pt.x - BOARD_X) / TILE);
+    const row = Math.floor((pt.y - BOARD_Y) / TILE);
     if (row < 0 || col < 0 || row >= this.session.state.height || col >= this.session.state.width) return null;
     return { row, col };
   }
@@ -259,7 +262,7 @@ export class Game extends Phaser.Scene {
       for (const m of moves) {
         const a = cellCentre(m.from.row, m.from.col);
         const b = cellCentre(m.to.row, m.to.col);
-        const tok = this.add.image(a.x, a.y, 'waste').setScale(2).setAlpha(0);
+        const tok = this.add.image(a.x, a.y, 'waste').setScale(1).setAlpha(0);
         this.animLayer.add(tok);
         this.tweens.add({
           targets: tok, x: b.x, y: b.y, alpha: { from: 1, to: 1 }, delay: start + (m.step - 1) * stepMs, duration: stepMs,

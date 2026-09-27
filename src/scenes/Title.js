@@ -1,6 +1,7 @@
 // Title: variant settings and high scores.
 import Phaser from 'phaser';
 import { CONFIG } from '../data/config.js';
+import { setupCamera } from '../ui/layout.js';
 import { UI } from '../art/palette.js';
 import { text, button, panel } from '../ui/widgets.js';
 import { configFromUrl, highScores, variantLabel, savedSettings, saveSettings } from '../ui/prefs.js';
@@ -31,16 +32,17 @@ export class Title extends Phaser.Scene {
   }
 
   create() {
+    setupCamera(this);
     this.cameras.main.setBackgroundColor(UI.bg);
     // Decorative strip of habitats.
     const strip = ['peat', 'moorland', 'heath', 'meadow', 'woodland', 'fen', 'river', 'saltmarsh', 'dunes', 'seagrass', 'openSea'];
     for (let i = 0; i < 27; i++) {
       const h = strip[i % strip.length];
-      this.add.image(i * 48, 0, `hab_${h}_minimal_n`).setOrigin(0).setScale(3);
-      this.add.image(i * 48, 672, `hab_${strip[(i + 5) % strip.length]}_minimal_n`).setOrigin(0).setScale(3);
+      this.add.image(i * 48, 0, `hab_${h}_minimal_n`).setOrigin(0).setScale(1.5);
+      this.add.image(i * 48, 672, `hab_${strip[(i + 5) % strip.length]}_minimal_n`).setOrigin(0).setScale(1.5);
     }
     ['cottages', 'familyFarm', 'windFarm', 'fishingFleet', 'school'].forEach((b, i) => {
-      this.add.image(84 + i * 60, 180, `bld_${b}`).setScale(3).setOrigin(0.5);
+      this.add.image(84 + i * 70, 184, `bld_${b}`).setScale(2).setOrigin(0.5);
     });
 
     text(this, 60, 72, 'Green and Pleasant', { size: 52, bold: true, color: UI.gold });
@@ -81,6 +83,15 @@ export class Title extends Phaser.Scene {
       this.refresh();
     });
     this.tip = text(this, 80, 620, '', { size: 13, color: UI.dim, wrap: 600 });
+
+    if (this.scale.fullscreen.available) {
+      const fs = button(this, 1196, 64, 56, 40, '', () => this.scale.toggleFullscreen(), {
+        onUp: true, onHover: (on) => this.tip.setText(on ? 'Full screen on or off.' : '')
+      });
+      fs.add(this.add.image(28, 20, 'icon_fullscreen').setScale(0.75));
+    } else if (this.sys.game.device.input.touch) {
+      text(this, 740, 632, 'To play full screen on iPhone or iPad: tap Share, then "Add to Home Screen".', { size: 12, color: UI.dim, wrap: 480 });
+    }
 
     this.startButton = button(this, 740, 560, 480, 64, 'Start game', () => this.start(), { size: 24, bold: true, fill: 0x4d6a3a });
 

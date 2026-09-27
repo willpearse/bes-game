@@ -6,7 +6,7 @@ import { RESTORATIONS, RESTORATION_KEYS } from '../data/restorations.js';
 import { SERVICES, SERVICE_KEYS, OTHER_NCP_NOTE } from '../data/services.js';
 import { EVENTS } from '../data/events.js';
 import { STAGE_ORDER, MENU_UNLOCKS } from '../data/decks.js';
-import { RIGHT_X, RIGHT_W, BOTTOM_Y, BOARD_X, W, H } from '../ui/layout.js';
+import { RIGHT_X, RIGHT_W, BOTTOM_Y, BOARD_X, W, H, setupCamera, logicalPointer } from '../ui/layout.js';
 import { text, button, panel, money, fmt1 } from '../ui/widgets.js';
 import { gdpLabel, landUseText, habitatName, serviceTooltip } from '../ui/describe.js';
 import { upcomingEvent } from '../engine/events.js';
@@ -32,6 +32,7 @@ export class UI extends Phaser.Scene {
   }
 
   create() {
+    setupCamera(this);
     this.session = this.registry.get('session');
     const s = this.session;
     this.firstGame = isFirstGame();
@@ -72,14 +73,14 @@ export class UI extends Phaser.Scene {
   buildTopBar() {
     panel(this, 0, 0, W, 78, 0x20202c);
     this.hudTurn = text(this, 16, 10, '', { size: 18, bold: true });
-    this.add.image(222, 20, 'coin').setScale(2);
+    this.add.image(222, 20, 'coin').setScale(1);
     this.hudCash = text(this, 240, 10, '', { size: 18, bold: true, color: C.gold });
     this.hudScore = text(this, 320, 10, '', { size: 18 });
-    this.hudFace = this.add.image(482, 20, 'face_happy').setScale(2);
+    this.hudFace = this.add.image(482, 20, 'face_happy').setScale(1);
     this.hudHappy = text(this, 500, 10, '', { size: 18 });
-    this.add.image(580, 20, 'icon_BIO').setScale(2);
+    this.add.image(580, 20, 'icon_BIO').setScale(1);
     this.hudBio = text(this, 598, 10, '', { size: 18 });
-    this.add.image(700, 22, 'waste').setScale(2);
+    this.add.image(700, 20, 'waste').setScale(1);
     this.hudSea = text(this, 716, 10, '', { size: 18 });
     this.hudEvent = text(this, 16, 46, '', { size: 15, color: C.accent });
     this.hudObjTitle = text(this, 880, 6, 'Objectives (+£50 each)', { size: 12, color: C.dim });
@@ -138,7 +139,7 @@ export class UI extends Phaser.Scene {
         const c = this.add.container(x, y);
         const bg = this.add.rectangle(0, 0, 111, 160, C.panel).setOrigin(0).setStrokeStyle(2, 0x000000);
         const price = text(this, 55, 6, '', { size: 16, bold: true, color: C.gold, origin: [0.5, 0] });
-        const sprite = this.add.image(55, 54, 'px').setScale(3);
+        const sprite = this.add.image(55, 54, 'px').setScale(1.5);
         const name = text(this, 55, 82, '', { size: 12, bold: true, origin: [0.5, 0], align: 'center', wrap: 104 });
         const info = text(this, 55, 116, '', { size: 11, color: C.dim, origin: [0.5, 0], align: 'center', wrap: 106 });
         const slotTag = text(this, 55, 146, i === 0 ? 'drops out next' : '', { size: 10, color: C.bad, origin: [0.5, 0] });
@@ -158,7 +159,7 @@ export class UI extends Phaser.Scene {
         const y = 110 + row * 74;
         const c = this.add.container(x, y);
         const bg = this.add.rectangle(0, 0, 84, 70, C.panel).setOrigin(0).setStrokeStyle(2, 0x000000);
-        const sprite = this.add.image(22, 22, `bld_${id}`).setScale(2);
+        const sprite = this.add.image(22, 22, `bld_${id}`).setScale(1);
         const price = text(this, 80, 4, `£${BUILDINGS[id].cost}`, { size: 14, bold: true, color: C.gold, origin: [1, 0] });
         const name = text(this, 42, 42, BUILDINGS[id].name, { size: 10, origin: [0.5, 0], align: 'center', wrap: 80 });
         c.add([bg, sprite, price, name]);
@@ -317,12 +318,12 @@ export class UI extends Phaser.Scene {
     this.inspY = y;
     panel(this, RIGHT_X, y, RIGHT_W, BOTTOM_Y - y - 8);
     this.inspTitle = text(this, RIGHT_X + 16, y + 10, '', { size: 18, bold: true, color: C.gold });
-    this.inspSprite = this.add.image(RIGHT_X + RIGHT_W - 40, y + 36, 'px').setScale(3);
+    this.inspSprite = this.add.image(RIGHT_X + RIGHT_W - 40, y + 36, 'px').setScale(1.5);
     this.inspBody = text(this, RIGHT_X + 16, y + 40, '', { size: 14, lineSpacing: 4, wrap: RIGHT_W - 110 });
     this.inspSvcLabel = text(this, RIGHT_X + 16, y + 158, '', { size: 13, color: C.dim });
     this.inspSvc = SERVICE_KEYS.map((k, i) => {
       const x = RIGHT_X + 16 + i * 132;
-      const icon = this.add.image(x + 16, y + 198, SERVICES[k].icon).setScale(2);
+      const icon = this.add.image(x + 16, y + 198, SERVICES[k].icon).setScale(1);
       const val = text(this, x + 36, y + 186, '', { size: 16, bold: true });
       const name = text(this, x, y + 218, SERVICES[k].short, { size: 11, color: C.dim });
       const z = this.add.zone(x, y + 178, 126, 56).setOrigin(0).setInteractive();
@@ -429,13 +430,27 @@ export class UI extends Phaser.Scene {
           else if (key === 'WASTE') this.showTip('Waste tokens and which way they flow (downhill).');
         }
       });
-      if (icon) b.add(this.add.image(20, 20, icon).setScale(2));
+      if (icon) b.add(this.add.image(20, 20, icon).setScale(1));
       b.key = key;
       x += w + 6;
       return b;
     });
-    text(this, W - 16, BOTTOM_Y + 18, 'D: debug view', { size: 12, color: C.dim, origin: [1, 0] });
+    this.buildFullscreenButton(W - 80, BOTTOM_Y + 8);
     this.refreshBottom();
+  }
+
+  // Full screen: a button where the browser supports it (desktop, Android).
+  // iPhones do not allow it for web pages; there, "Add to Home Screen" opens the game without browser bars.
+  buildFullscreenButton(x, y) {
+    if (!this.scale.fullscreen.available) {
+      text(this, W - 16, BOTTOM_Y + 18, 'D: debug view', { size: 12, color: C.dim, origin: [1, 0] });
+      return;
+    }
+    const b = button(this, x, y, 64, 40, '', () => this.scale.toggleFullscreen(), {
+      onUp: true,
+      onHover: (on) => (on ? this.showTip('Full screen on or off.\nD: debug view.') : this.hideTip())
+    });
+    b.add(this.add.image(32, 20, 'icon_fullscreen').setScale(0.75));
   }
 
   refreshBottom() {
@@ -499,7 +514,8 @@ export class UI extends Phaser.Scene {
     this.positionTip(this.input.activePointer);
   }
 
-  positionTip(p) {
+  positionTip(pointer) {
+    const p = logicalPointer(this, pointer);
     const x = Math.min(p.x + 16, W - this.tip.width - 4);
     const y = p.y + 20 + this.tip.height > H ? p.y - this.tip.height - 10 : p.y + 20;
     this.tip.setPosition(x, Math.max(0, y));

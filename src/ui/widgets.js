@@ -1,5 +1,7 @@
 // Small UI helpers shared by scenes.
+import Phaser from 'phaser';
 import { UI } from '../art/palette.js';
+import { RES } from './layout.js';
 
 export const FONT = '"Trebuchet MS", "Segoe UI", Verdana, sans-serif';
 
@@ -13,7 +15,9 @@ export function text(scene, x, y, str, opts = {}) {
     wordWrap: opts.wrap ? { width: opts.wrap } : undefined,
     lineSpacing: opts.lineSpacing ?? 2
   });
-  t.setResolution(2);
+  // Render at full canvas resolution with smooth filtering, so text is never speckled.
+  t.setResolution(RES * 1.5);
+  t.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
   if (opts.origin) t.setOrigin(...opts.origin);
   return t;
 }
@@ -31,7 +35,8 @@ export function button(scene, x, y, w, h, label, onClick, opts = {}) {
   bg.setInteractive({ useHandCursor: true });
   bg.on('pointerover', () => { if (c.enabled) bg.setStrokeStyle(2, 0xe8b53a); if (opts.onHover) opts.onHover(true); });
   bg.on('pointerout', () => { bg.setStrokeStyle(2, c.active ? 0xe8b53a : 0x000000); if (opts.onHover) opts.onHover(false); });
-  bg.on('pointerdown', (p) => { if (p.rightButtonDown()) return; if (c.enabled) onClick(); });
+  // Fullscreen requests must come from pointerup, so buttons can opt into it.
+  bg.on(opts.onUp ? 'pointerup' : 'pointerdown', (p) => { if (p.rightButtonDown()) return; if (c.enabled) onClick(); });
   c.setEnabled = (on) => {
     c.enabled = on;
     t.setAlpha(on ? 1 : 0.4);

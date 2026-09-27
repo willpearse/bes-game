@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { UI as C, OVERLAY_COLOURS } from '../art/palette.js';
 import { SERVICES, SERVICE_KEYS } from '../data/services.js';
-import { W } from '../ui/layout.js';
+import { W, setupCamera } from '../ui/layout.js';
 import { text, button, panel, money } from '../ui/widgets.js';
 import { addHighScore, variantLabel } from '../ui/prefs.js';
 
@@ -18,6 +18,7 @@ export class End extends Phaser.Scene {
   create() {
     const st = this.st;
     const f = st.final;
+    setupCamera(this);
     this.cameras.main.setBackgroundColor(C.bg);
     const entry = { score: f.score, natureShare: f.natureShare, seed: st.seed, date: Date.now() };
     const { list, rank } = addHighScore(st.config, entry);
@@ -55,7 +56,7 @@ export class End extends Phaser.Scene {
     const max = Math.max(1, ...SERVICE_KEYS.map((k) => f.perService[k]));
     SERVICE_KEYS.forEach((k, i) => {
       const y = 414 + i * 44;
-      this.add.image(76, y + 12, SERVICES[k].icon).setScale(2);
+      this.add.image(76, y + 12, SERVICES[k].icon).setScale(1);
       text(this, 100, y + 2, SERVICES[k].name, { size: 13 });
       const w = Math.max(2, (f.perService[k] / max) * 380);
       this.add.rectangle(100, y + 22, w, 12, OVERLAY_COLOURS[k]).setOrigin(0);

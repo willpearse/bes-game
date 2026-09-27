@@ -12,3 +12,17 @@ export const BOTTOM_Y = 664;
 
 export const cellToXY = (row, col) => ({ x: BOARD_X + col * TILE, y: BOARD_Y + row * TILE });
 export const cellCentre = (row, col) => ({ x: BOARD_X + col * TILE + TILE / 2, y: BOARD_Y + row * TILE + TILE / 2 });
+
+// The canvas is drawn at RES times the logical size, and each scene's camera zooms by RES.
+// Sprites (32 px, shown at 48 px on the board) then land on whole screen pixels, and text is
+// rendered at full resolution, so everything stays sharp when the browser scales the canvas.
+export const RES = 2;
+
+export function setupCamera(scene) {
+  scene.cameras.main.setZoom(RES).centerOn(W / 2, H / 2);
+}
+
+// Pointer position in logical (1280x720) coordinates.
+export function logicalPointer(scene, p) {
+  return scene.cameras.main.getWorldPoint(p.x, p.y);
+}

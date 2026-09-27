@@ -1,7 +1,7 @@
 // Boot: generate placeholder textures from palette-index strings.
 import Phaser from 'phaser';
 import { PALETTE } from '../art/palette.js';
-import { NATURE_SPRITES, BUILDING_SPRITES, ICON_SPRITES } from '../art/sprites.js';
+import { NATURE_SPRITES, BUILDING_SPRITES, ICON_SPRITES, SPRITE_SIZE } from '../art/sprites.js';
 import { natureRows } from '../art/textures.js';
 import { INTENSITIES } from '../data/config.js';
 
@@ -22,7 +22,7 @@ export class Boot extends Phaser.Scene {
           g.fillRect(x, y, 1, 1);
         }
       }
-      g.generateTexture(key, 16, 16);
+      g.generateTexture(key, SPRITE_SIZE, SPRITE_SIZE);
     };
     for (const habitat of Object.keys(NATURE_SPRITES)) {
       for (const intensity of INTENSITIES) {

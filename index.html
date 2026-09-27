@@ -2,17 +2,30 @@
 <html lang="en-GB">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Green and Pleasant</title>
+    <meta name="theme-color" content="#1b1b24" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <!-- Installable web app: opens full screen from the home screen (Android and iPhone). -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Green &amp; Pleasant" />
+    <link rel="apple-touch-icon" href="./icon-180.png" />
     <style>
-      html, body { margin: 0; padding: 0; height: 100%; background: #1a1c2c; overflow: hidden; }
+      html, body { margin: 0; padding: 0; height: 100%; background: #1b1b24; overflow: hidden; }
       #game { width: 100%; height: 100%; }
-      canvas { image-rendering: pixelated; }
+      #rotate {
+        display: none; position: fixed; left: 0; right: 0; top: 0; padding: 8px 12px;
+        font: 14px "Trebuchet MS", Verdana, sans-serif; color: #fdf3dc; background: #2f6243; text-align: center;
+      }
+      @media (orientation: portrait) and (max-width: 700px) { #rotate { display: block; } }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate">Turn your phone sideways for a bigger map.</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

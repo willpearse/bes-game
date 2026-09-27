@@ -34,13 +34,14 @@ Every variant can be switched on the title screen or by URL query:
 - Click a market card, then a gold square on the map, to build.
 - Switch to **Restore**, pick an action and a card to discard, then click a square.
 - **P** passes the turn. **Esc** or right-click cancels. **D** toggles the debug view.
-- The bottom bar switches map overlays (each service, biodiversity, waste flow).
+- The bottom bar switches map overlays (each service, biodiversity, waste flow). The button at its right end toggles full screen.
+- On a phone, play it sideways. On iPhone or iPad, tap Share → "Add to Home Screen" to play without browser bars (Apple doesn't allow a full-screen button on web pages).
 
 ## Layout
 
 - `src/engine/`: the rules, pure JavaScript with no Phaser import, driven by a seeded RNG.
 - `src/data/`: every tunable number and table (flat, data-only files).
-- `src/art/`: the palette and 16×16 sprites as palette-index strings.
+- `src/art/`: the palette and 32×32 sprites as palette-index strings (drawn by `scripts/draw-sprites.js`).
 - `src/scenes/`: Phaser scenes (Boot, Title, Game, UI, End).
 - `scripts/simulate.js`: headless balance simulation with a random and a greedy bot.
 

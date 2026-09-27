@@ -71,10 +71,11 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 
 ### Art and UI
 
-28. Textures are made at boot with `Graphics.generateTexture`, as the spec says. The light/intense and young/intermediate looks are derived from each habitat sprite by thinning "vegetation" pixels (`src/art/textures.js`). Young and intermediate woodland also get saplings drawn on.
-29. Built tiles are drawn over a worn (intense-use) version of the habitat underneath.
-30. The font is the system sans-serif (Trebuchet MS / Segoe UI / Verdana). A pixel font would need a font file or a new dependency.
-31. Hints show on the first game only, at most one per turn: how to place, overlays (after the first build), waste (turn 3+), restoring (turn 5+).
+28. **Sprites are 32×32, not 16×16** (changed at the designer's request for a cuter, less blocky look). They are still palette-index strings in `src/art/sprites.js`, still made into textures at boot with `Graphics.generateTexture`, and still swappable for a spritesheet. They are drawn by `scripts/draw-sprites.js` (rounded shapes, soft outlines); run `node scripts/draw-sprites.js` to regenerate after editing it, or edit `sprites.js` directly. The palette is still 16 colours, now softer, with a plum outline instead of black.
+29. **Worn and recovering looks** are derived in `src/art/textures.js`. Light and intense use turn soft, noise-shaped patches of vegetation into bare ground (about 20% and 50%). Young and intermediate stages thin the vegetation the same way; woodland has hand-drawn saplings and small trees instead. Built tiles stand on the intense-use version of their habitat.
+30. **Sharp text.** The canvas is drawn at twice the logical size (2560×1440; `RES` in `src/ui/layout.js`), and every scene's camera zooms ×2. Text is rendered at high resolution with smooth filtering. Phaser's pixel-art mode sets `image-rendering: pixelated` on the canvas, which made text speckled whenever the browser shrank the canvas; `main.js` sets it back to smooth. Sprites still look crisp, because inside the canvas each sprite pixel covers exactly 3×3 canvas pixels. The font is the system sans-serif (Trebuchet MS / Segoe UI / Verdana).
+31. **Full screen.** A button at the bottom right (and on the title screen) toggles full screen where the browser allows it (desktop, Android). iPhones do not allow it for web pages, so the page is also an installable web app (`public/manifest.webmanifest`, Apple home-screen tags, icons): "Add to Home Screen" opens it without browser bars. The title screen explains this on touch devices without full-screen support. In portrait on a small screen, a banner suggests turning the phone sideways.
+32. Hints show on the first game only, at most one per turn: how to place, overlays (after the first build), waste (turn 3+), restoring (turn 5+).
 
 ## Balance observations (placeholder numbers)
 
