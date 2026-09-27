@@ -16,7 +16,27 @@ import { resolveEvent } from './events.js';
 import { evaluateObjectives } from './objectives.js';
 
 const cfg = (state) => state.config ?? CONFIG;
-const clone = (x) => structuredClone(x);
+// Fast structural copy of a game state (plain JSON data). Equivalent to structuredClone.
+export function cloneState(st) {
+  const copyServices = (o) => (o ? { ...o } : o);
+  return {
+    ...st,
+    config: { ...st.config, eventTurns: st.config.eventTurns.slice(), marketSurcharge: st.config.marketSurcharge.slice(),
+      pressureThresholds: st.config.pressureThresholds.slice(), stageStartTurns: { ...st.config.stageStartTurns } },
+    cells: st.cells.map((c) => ({ ...c, supply: copyServices(c.supply), received: copyServices(c.received) })),
+    market: st.market ? { slots: st.market.slots.slice(), piles: Object.fromEntries(Object.entries(st.market.piles).map(([k, v]) => [k, v.slice()])) } : null,
+    events: st.events.map((e) => ({ ...e })),
+    eventHistory: structuredClone(st.eventHistory),
+    objectives: st.objectives.slice(),
+    startPrimary: st.startPrimary.slice(),
+    stats: { ...st.stats },
+    cf: { ...st.cf, without: { ...st.cf.without } },
+    history: st.history.map((h) => ({ ...h })),
+    final: st.final ? structuredClone(st.final) : null
+  };
+}
+
+const clone = cloneState;
 
 // ---------- choices and costs ----------
 
@@ -157,9 +177,21 @@ export function primaryWarning(state, choice, cell) {
 
 const rank = (i) => INTENSITIES.indexOf(i);
 
+// States are never mutated after takeTurn returns them, so the recomputed baseline can be cached.
+const baselineCache = new WeakMap();
+
+function baseline(state) {
+  let b = baselineCache.get(state);
+  if (!b) {
+    const before = clone(state);
+    b = { before, base: recompute(before).projection };
+    baselineCache.set(state, b);
+  }
+  return b;
+}
+
 export function preview(state, choice, row, col) {
-  const before = clone(state);
-  const base = recompute(before).projection;
+  const { before, base } = baseline(state);
   const after = clone(state);
   applyChoice(after, choice, row, col, []);
   const proj = recompute(after).projection;

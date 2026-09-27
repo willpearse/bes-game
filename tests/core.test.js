@@ -177,3 +177,21 @@ describe('determinism and counterfactuals', () => {
     expect(s.final.natureContribution).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('cloneState', () => {
+  it('matches structuredClone and shares no mutable data', async () => {
+    const { cloneState } = await import('../src/engine/actions.js');
+    let s = createGame({ seed: 12 });
+    for (let i = 0; i < 9; i++) s = takeTurn(s, { type: 'pass' }).state;
+    const c = cloneState(s);
+    expect(c).toEqual(structuredClone(s));
+    c.cells[0].supply.POL = 99;
+    c.market.piles.B.push('x');
+    c.config.eventTurns.push(99);
+    c.eventHistory[0].hit.push(1);
+    expect(s.cells[0].supply.POL).not.toBe(99);
+    expect(s.market.piles.B).not.toContain('x');
+    expect(s.config.eventTurns).toHaveLength(3);
+    expect(s.eventHistory[0].hit).not.toContain(1);
+  });
+});
