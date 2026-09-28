@@ -1,5 +1,5 @@
 // createGame(): builds the initial, fully resolved game state (plain JSON data).
-import { CONFIG } from '../data/config.js';
+import { CONFIG, MAP_DEFAULTS } from '../data/config.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { EVENTS } from '../data/events.js';
@@ -64,10 +64,12 @@ export function parseMap(map) {
     const line = map.rows[row];
     for (let col = 0; col < map.width; col++) {
       const ch = line[col];
-      const buildingId = map.startingBuildings?.[ch];
+      // A starting building is a building id, or { building, habitat } for the ground under it.
+      const start = map.startingBuildings?.[ch];
+      const buildingId = typeof start === 'string' ? start : start?.building;
       let cell;
       if (buildingId) {
-        cell = makeCell(row, col, map.startingBuildingHabitat ?? 'meadow', 'matureSecondary');
+        cell = makeCell(row, col, start.habitat ?? map.startingBuildingHabitat ?? 'meadow', 'matureSecondary');
         placeBuilding(cell, buildingId);
       } else {
         const habitat = CODE_TO_HABITAT[ch.toLowerCase()];
@@ -90,6 +92,7 @@ export function recompute(state) {
   computeHappiness(state);
   const proj = projectGdp(state);
   for (const { cell, gdp } of proj.perTile) cell.gdp = gdp;
+  state.food = proj.food;
   return { changes, projection: proj };
 }
 
@@ -125,7 +128,10 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     turn: 1,
     stage: 'A',
     gameOver: false,
-    cash: cfg.startingCash,
+    // Explicit config beats the map, which beats the CONFIG default.
+    cash: config?.startingCash ?? map.startingCash ?? MAP_DEFAULTS.startingCash,
+    housingTarget: config?.housingTarget ?? map.housingTarget ?? MAP_DEFAULTS.housingTarget,
+    food: null,           // { made, need, bought, cost } this turn
     score: 0,
     gdpEarned: 0,
     eventDamage: 0,
@@ -139,10 +145,16 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     eventHistory: [],
     objectives: [],
     startPrimary: [],
-    stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0, restorations: 0 },
+    stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0, restorations: 0,
+      foodCost: 0, wasteBill: 0 },
     startHabitats: {},
     objectiveOffer: [],
-    cf: { actual: 0, noNature: 0, without: Object.fromEntries(SERVICE_KEYS.map((k) => [k, 0])) },
+    // Running GDP totals: actual, with no nature, and without each service. income holds the income-only
+    // parts (before the happiness multiplier), used to apply an end-of-game multiplier to income alone.
+    cf: {
+      actual: 0, noNature: 0, without: Object.fromEntries(SERVICE_KEYS.map((k) => [k, 0])),
+      income: { actual: 0, noNature: 0, without: Object.fromEntries(SERVICE_KEYS.map((k) => [k, 0])) }
+    },
     history: [],
     final: null
   };

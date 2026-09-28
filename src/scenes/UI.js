@@ -9,12 +9,13 @@ import { OBJECTIVES } from '../data/objectives.js';
 import { STAGE_ORDER, MENU_UNLOCKS } from '../data/decks.js';
 import { RIGHT_X, RIGHT_W, BOTTOM_Y, BOARD_X, W, H, setupCamera, logicalPointer } from '../ui/layout.js';
 import { text, button, panel, money, fmt1 } from '../ui/widgets.js';
-import { gdpLabel, landUseText, habitatName, serviceTooltip } from '../ui/describe.js';
+import { gdpLabel, foodLabel, landUseText, habitatName, serviceTooltip } from '../ui/describe.js';
 import { upcomingEvent } from '../engine/events.js';
 import { intactness } from '../engine/intensity.js';
 import { evaluateObjectives } from '../engine/objectives.js';
 import { menuUnlocked, surcharge } from '../engine/market.js';
 import { wasteTokensAt } from '../engine/waste.js';
+import { tileFood } from '../engine/gdp.js';
 import { cellAt } from '../engine/grid.js';
 import { isFirstGame, hintsSeen, markHintSeen } from '../ui/prefs.js';
 
@@ -22,7 +23,8 @@ const HINTS = {
   place: 'Pick a tile from the market, then click a gold square on the map to build it.',
   overlays: 'Try the buttons along the bottom: they show where each of nature\'s services comes from.',
   waste: 'Waste flows downhill into rivers, lakes and the sea. Wetlands with a strong water service (fen, peat, saltmarsh) clean it up, including the river beside them.',
-  restore: 'Restoring nature is a valid turn. Switch to Restore, pick an action, and click a square.'
+  restore: 'Restoring nature is a valid turn. Switch to Restore, pick an action, and click a square.',
+  food: 'Every resident eats 1 food a turn. Farms and fishing fleets make it; anything short is bought in, which costs you.'
 };
 
 const ALL_BUILDINGS = STAGE_ORDER.flatMap((s) => MENU_UNLOCKS[s]);
@@ -87,6 +89,8 @@ export class UI extends Phaser.Scene {
     this.add.image(700, 20, 'waste').setScale(1);
     this.hudSea = text(this, 716, 10, '', { size: 18 });
     this.hudEvent = text(this, 16, 46, '', { size: 15, color: C.accent });
+    this.hudHomes = text(this, 600, 46, '', { size: 15 });
+    this.hudFood = text(this, 720, 46, '', { size: 15 });
     this.hudObjTitle = text(this, 880, 6, 'Objectives (+£50 each, hover for details)', { size: 12, color: C.dim });
     this.hudObj = [text(this, 880, 24, '', { size: 14 }), text(this, 880, 46, '', { size: 14 })];
 
@@ -102,7 +106,16 @@ export class UI extends Phaser.Scene {
     tipZone(690, 4, 170, 34, () => 'Water pollution: waste that has reached the sea or a lake.\nIt hurts fishing and holiday parks near water. Healthy seagrass cleans it slowly;\nwetlands and woods by the river stop it getting there.');
     tipZone(876, 4, 400, 70, () => evaluateObjectives(this.session.state)
       .map((o) => `${o.met ? '✔ On track' : '○ Not yet'}: ${o.name}\n${o.text} (now ${o.progress})\n${OBJECTIVES[o.id].why}`).join('\n\n'));
-    tipZone(10, 40, 860, 34, () => {
+    tipZone(596, 40, 118, 30, () => {
+      const st = this.session.state;
+      return `Homes: residents now, and the housing target for the end of the game.\nEach resident short at the end costs £${st.config.housingPenaltyPerResident}.`;
+    });
+    tipZone(716, 40, 160, 30, () => {
+      const f = this.session.state.food;
+      return `Food made this turn / food your residents eat (1 each).\nFarms and fishing fleets make food; pollinators and clean water help them make more.` +
+        (f?.bought ? `\nYou are buying ${f.bought} food this turn, costing £${fmt1(f.cost).replace(/\.0$/, '')}.` : '\nEveryone is fed.');
+    });
+    tipZone(10, 40, 580, 34, () => {
       const ev = upcomingEvent(this.session.state);
       return ev ? `${EVENTS[ev.id].name}\n${EVENTS[ev.id].blurb}` : 'No more events.';
     });
@@ -117,6 +130,11 @@ export class UI extends Phaser.Scene {
     this.hudFace.setTexture(st.happiness >= 6.5 ? 'face_happy' : st.happiness >= 4 ? 'face_ok' : 'face_sad');
     this.hudBio.setText(`${Math.round(intactness(st) * 100)}%`);
     this.hudSea.setText(`Pollution ${fmt1(st.pollution).replace(/\.0$/, '')}`);
+    this.hudHomes.setText(`Homes ${st.residents}/${st.housingTarget}`);
+    this.hudHomes.setColor(st.residents >= st.housingTarget ? C.good : C.text);
+    const f = st.food ?? { made: 0, need: 0, bought: 0 };
+    this.hudFood.setText(`Food ${f.made}/${f.need}${f.bought ? `  (buying ${f.bought})` : ''}`);
+    this.hudFood.setColor(f.bought ? C.bad : C.good);
     const ev = upcomingEvent(st);
     if (ev) {
       const left = ev.turnsLeft;
@@ -181,7 +199,7 @@ export class UI extends Phaser.Scene {
 
   buildingTip(id) {
     const b = BUILDINGS[id];
-    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn, upkeep £${b.upkeep ?? 0} a turn. Waste ${b.waste}.`];
+    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn.${foodLabel(id) ? ` Food ${foodLabel(id)}.` : ''}${b.residents ? ` Houses ${b.residents} (each eats 1 food).` : ''} Waste ${b.waste}: nature touching it soaks up 1 per 2 water; the rest costs £1 each.`];
     if (b.residents) lines.push(`Homes for ${b.residents} resident${b.residents > 1 ? 's' : ''}.`);
     if (b.pressure) lines.push(`Puts pressure ${b.pressure} on nature next to it.`);
     if (b.nuisance) lines.push('Homes next to it are less happy.');
@@ -242,7 +260,7 @@ export class UI extends Phaser.Scene {
           c.info.setText('to discard');
         } else {
           c.price.setText(`£${b.cost + extra}`);
-          c.info.setText(`GDP ${gdpLabel(id)}\nUpkeep ${b.upkeep ?? 0}, waste ${b.waste}`);
+          c.info.setText(`GDP ${gdpLabel(id)}\n${foodLabel(id) ? `Food ${foodLabel(id)}, ` : b.residents ? `Homes ${b.residents}, ` : ''}waste ${b.waste}`);
         }
         const choice = restoring ? { type: 'restore', restoration: 'plantWoodland', slot: i } : { type: 'build', slot: i };
         const affordable = s.canAfford(choice);
@@ -377,7 +395,7 @@ export class UI extends Phaser.Scene {
       }
       const lines = [];
       lines.push(`On: ${habitatName(cell.habitat)}${cell.kind === 'built' ? ` (${BUILDINGS[cell.building].name})` : ''}`);
-      if (building) lines.push(`Projected GDP: £${pv.gdp} a turn, after upkeep`);
+      if (building) lines.push(`Projected GDP: £${pv.gdp} a turn, after its waste bill`);
       const d = pv.gdpDelta;
       lines.push(`Change in region's GDP per turn: ${d >= 0 ? '+' : ''}£${fmt1(d)}`);
       const hd = pv.happinessDelta;
@@ -404,7 +422,8 @@ export class UI extends Phaser.Scene {
       this.inspSprite.setTexture(`bld_${cell.building}`).setVisible(true);
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
       lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
-      lines.push(`GDP last turn: £${cell.gdp} after £${b.upkeep ?? 0} upkeep${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
+      const made = b.food ? `.  Food: ${tileFood(cell)}` : '';
+      lines.push(`GDP last turn: £${cell.gdp} after its waste bill${made}${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
       lines.push(b.tip);
       this.setServices('Services received from nearby nature:', cell.received);
     } else {
@@ -544,6 +563,7 @@ export class UI extends Phaser.Scene {
       if (l.type === 'build' && log.length) this.showHint('overlays');
     }
     const w = log.find((l) => l.type === 'waste');
+    if (st.turn >= 2 && st.food?.bought > 0) this.showHint('food');
     if (st.turn >= 3 && w && w.produced > 0) this.showHint('waste');
     if (st.turn >= 5) this.showHint('restore');
 

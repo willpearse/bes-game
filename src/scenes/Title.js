@@ -12,6 +12,8 @@ import { randomSeed } from '../engine/rng.js';
 // Flowing waste and crowding are always on in normal play. They can still be switched with
 // URL flags (?waste=simple&pressure=0) for testing, but are not offered here.
 const OPTIONS = [
+  { key: 'mapId', label: 'Map', choices: [['estuary', 'River estuary'], ['millValley', 'Mill valley']],
+    tip: 'River estuary: wild, healthy land and a tiny village; aim for 16 residents. Mill valley: a busy, worn valley with a town, farms and a mill; aim for 30.' },
   { key: 'marketMode', label: 'Tiles', choices: [['market', 'Market'], ['menu', 'Menu']],
     tip: 'Market: take tiles from a changing row of 6. Menu: build anything unlocked.' },
   { key: 'happinessMode', label: 'Happiness', choices: [['perTurn', 'Every turn'], ['endGame', 'At the end']],
@@ -30,6 +32,7 @@ export class Title extends Phaser.Scene {
     const saved = savedSettings();
     this.cfg = {
       ...CONFIG,
+      mapId: saved.mapId ?? CONFIG.mapId,
       marketMode: saved.marketMode ?? CONFIG.marketMode,
       happinessMode: saved.happinessMode ?? CONFIG.happinessMode,
       ...url,
@@ -67,9 +70,9 @@ export class Title extends Phaser.Scene {
     text(this, 64, 128, 'Plan a corner of Britain. Grow the economy. Find out how much of it nature pays for.', { size: 15, color: UI.text });
 
     text(this, 64, 222,
-      'Each turn, build one tile or restore some nature. Built tiles earn money and cost upkeep.\n' +
-      'What they earn depends on the nature touching them: pollinators for farms, green space for\n' +
-      'happy residents, wetlands that clean water and hold back floods. Waste flows downhill to the sea.\n' +
+      'Each turn, build one tile or restore some nature. Reach the housing target and keep everyone fed.\n' +
+      'The nature touching each tile does the work: pollinators for farms, green space for happy\n' +
+      'residents, wetlands that soak up waste (saving your waste bill) and hold back floods.\n' +
       'Three events will test whether nature is protecting you. 24 turns, about 10 to 15 minutes.',
       { size: 14, color: UI.text, lineSpacing: 5 });
 
@@ -206,7 +209,7 @@ export class Title extends Phaser.Scene {
     if (this.chosen.length !== this.cfg.objectiveCount) return;
     const { animations, ...rest } = this.cfg;
     const cfg = { ...rest, seed: this.currentSeed(), objectives: this.chosen.slice() };
-    saveSettings({ marketMode: cfg.marketMode, happinessMode: cfg.happinessMode });
+    saveSettings({ mapId: cfg.mapId, marketMode: cfg.marketMode, happinessMode: cfg.happinessMode });
     this.scene.start('Game', { config: cfg });
   }
 }

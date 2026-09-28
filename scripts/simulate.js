@@ -3,7 +3,7 @@
 //   npm run simulate -- --games 500 --bot greedy
 // Options: --games N (default 100), --bot random|greedy|nature|balanced|both|all or a comma list
 //          (default both = random and greedy), --seed S (first seed, default 1),
-//          --market menu, --waste simple, --happiness endGame, --pressure 1 (same variant flags as the URL).
+//          --map estuary|millValley, --market menu, --waste simple, --happiness endGame (as the URL flags).
 import { SERVICE_KEYS } from '../src/data/services.js';
 import { BOTS, BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.js';
 
@@ -43,6 +43,11 @@ for (const bot of bots) {
   console.log(row('GDP after damage (£)', results.map((f) => f.gdpAfterDamage)));
   console.log(row("Nature's share of GDP", results.map((f) => f.natureShare * 100), 1, '%'));
   for (const k of SERVICE_KEYS) console.log(row(`  ${k} contribution (£)`, results.map((f) => f.perService[k])));
+  console.log(row('Food bought (£)', results.map((f) => f.foodCost)));
+  console.log(row('Waste bills (£)', results.map((f) => f.wasteBill)));
+  console.log(row('Water pollution at end', results.map((f) => f.pollution)));
+  console.log(row('Residents at end', results.map((f) => f.residents)));
+  console.log(row('Housing penalty (£)', results.map((f) => f.housingPenalty)));
   console.log(row('Event hits (tiles)', results.map((f) => f.eventHits)));
   console.log(row('Event damage (£)', results.map((f) => f.eventDamage)));
   console.log(row('Damage avoided (£)', results.map((f) => f.damageAvoided)));

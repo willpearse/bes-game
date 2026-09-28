@@ -51,12 +51,12 @@ describe('waste movement', () => {
     const s = tinyGame(['mro', 'mlm'], { elevation: [[5, 3, 0], [5, 2, 5]] });
     at(s, 0, 0).waste = 2; // -> river (0,1) -> lake (1,1) at elevation 2 vs sea 0: sea is E
     const rec = resolveWasteTokens(s, []);
-    expect(s.pollution).toBe(2);
+    expect(s.pollution).toBe(1.8); // 2, less 10% that disperses
     expect(rec.toSea).toBe(2);
     const s2 = tinyGame(['ml'], { elevation: [[5, 2]] });
     at(s2, 0, 0).waste = 3;
     const rec2 = resolveWasteTokens(s2, []);
-    expect(s2.pollution).toBe(3);
+    expect(s2.pollution).toBe(2.7);
     expect(rec2.toLake).toBe(3);
     expect(at(s2, 0, 1).waste).toBe(0);
   });
@@ -103,14 +103,14 @@ describe('waste movement', () => {
     expect(at(s, 1, 1).waste).toBe(0);
     expect(at(s, 0, 0).waste).toBe(2); // not orthogonal to the centre
   });
-  it('water pollution falls by 0.5 per healthy seagrass cell', () => {
+  it('water pollution falls by 0.5 per healthy seagrass cell, then 10% disperses', () => {
     const s = tinyGame(['zzo']);
     s.pollution = 3;
     resolveWasteTokens(s, []);
-    expect(s.pollution).toBe(2);
+    expect(s.pollution).toBe(1.8); // (3 - 0.5 * 2) * 0.9
     at(s, 0, 0).intensity = 'intense';
     resolveWasteTokens(s, []);
-    expect(s.pollution).toBe(1.5);
+    expect(s.pollution).toBe(1.2); // (1.8 - 0.5) * 0.9 = 1.17
     s.pollution = 0.2;
     resolveWasteTokens(s, []);
     expect(s.pollution).toBe(0);
@@ -138,7 +138,7 @@ describe('simple waste mode', () => {
     recompute(s);
     const rec = resolveWasteSimple(s, []);
     expect(rec.toSea).toBe(3);
-    expect(s.pollution).toBe(2); // 3 - 0.5 * 2 seagrass
+    expect(s.pollution).toBe(1.8); // (3 - 0.5 * 2 seagrass) * 0.9
     const s2 = tinyGame(['#ff'], { config: { wasteMode: 'simple' } });
     resolveWaste(s2, []);
     expect(s2.pollution).toBe(0); // fens clean 4 > 1

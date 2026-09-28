@@ -63,7 +63,7 @@ src/
     rng.js             mulberry32
   data/                config.js (CONFIG + constants), predicts.js, habitats.js, buildings.js,
                        restorations.js, services.js (IPBES mapping), events.js, objectives.js,
-                       decks.js, maps/ (estuary.json + index.js)
+                       decks.js, maps/ (estuary.json, millValley.json, index.js)
   art/
     palette.js         16-colour palette and UI colours
     sprites.js         GENERATED 32x32 palette-index strings (edit scripts/draw-sprites.js, or this file)
@@ -82,7 +82,7 @@ public/                favicon, web app manifest, home-screen icons
 
 `takeTurn` applies the action, then in order: market update, intensity, Primary loss, succession, supply, services received, happiness, GDP (plus counterfactuals), waste, event, advance turn. The `log` it returns drives all animations and messages (GDP floats, waste token moves, events, toasts).
 
-There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
+There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − food bought; each map has a housing target checked at the end. Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
 
 ## Display notes
 
@@ -93,4 +93,4 @@ There are three services: POL (pollination), GRN (green space and clean air), WA
 
 ## Variants and settings
 
-`src/data/config.js` holds `CONFIG`. URL flags override it: `?market=menu&waste=simple&happiness=endGame&pressure=0&seed=42`. The title screen offers only tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste and crowding are always on in normal play.
+`src/data/config.js` holds `CONFIG` (and `MAP_DEFAULTS` for starting cash and housing target, which each map can set in its JSON). URL flags override it: `?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42`. The title screen offers the map, tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste is always on in normal play.

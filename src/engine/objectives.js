@@ -50,8 +50,6 @@ export function evaluateObjective(state, id) {
       const reserved = sea.filter((c) => reserveProtected(state, c)).length / Math.max(1, sea.length);
       return { met: wild >= o.land - 1e-9 && reserved >= o.sea - 1e-9, progress: `land ${Math.round(wild * 100)}%, sea ${Math.round(reserved * 100)}%` };
     }
-    case 'residentsMin':
-      return { met: state.residents >= o.value, progress: `${state.residents}/${o.value}` };
     case 'restorationsMin': {
       const n = state.stats.restorations ?? 0;
       return { met: n >= o.value, progress: `${n}/${o.value}` };

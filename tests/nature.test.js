@@ -202,17 +202,14 @@ describe('wellbeing', () => {
     const s3 = tinyGame(['#ggggH'], { buildings: { '#': 'cottages', H: 'hospital' } });
     expect(wellbeingParts(s3, at(s3, 0, 0)).hospital).toBe(0); // 5 away
   });
-  it('happiness is resident-weighted, 5 with no homes, and has population pressure', () => {
+  it('happiness is resident-weighted and 5 with no homes', () => {
     const empty = tinyGame(['ggg']);
     expect(happiness(empty).H).toBe(5);
     const s = tinyGame(['#T'], { buildings: { '#': 'cottages', T: 'towerBlock' } });
     const w1 = wellbeing(s, at(s, 0, 0));
     const w2 = wellbeing(s, at(s, 0, 1));
     expect(s.happiness).toBeCloseTo(Math.round(((w1 + 4 * w2) / 5) * 10) / 10, 5);
-    s.config.populationPressure = true;
-    s.config.pressureThresholds = [3, 5, 100];
-    const before = happiness({ ...s, config: { ...s.config, populationPressure: false } }).H;
-    expect(computeHappiness(s)).toBeCloseTo(before - 1, 5);
+    expect(computeHappiness(s)).toBe(s.happiness);
   });
 });
 

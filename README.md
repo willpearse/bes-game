@@ -16,10 +16,10 @@ npm run payoff -- --games 300               # building pay-off with and without 
 
 ## Variants
 
-The title screen offers the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste and crowding are always on in normal play, but every variant can still be switched by URL query for testing:
+The title screen offers the map (River estuary or Mill valley), the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste is always on in normal play, but every variant can still be switched by URL query for testing:
 
 ```
-?market=menu&waste=simple&happiness=endGame&pressure=1&seed=42
+?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42
 ```
 
 | Query | Values | Meaning |
@@ -27,7 +27,7 @@ The title screen offers the tile mode (market or menu), when happiness counts, t
 | `market` | `market` (default), `menu` | Take tiles from a 6-slot market, or pick any unlocked tile |
 | `waste` | `tokens` (default), `simple` | Waste tokens flow downhill, or only affect neighbours |
 | `happiness` | `perTurn` (default), `endGame` | When happiness multiplies GDP |
-| `pressure` | `1` (default), `0` | Population pressure (crowding) lowers happiness |
+| `map` | `estuary` (default), `millValley` | Which map to play |
 | `seed` | number | Replay a particular game |
 
 ## Controls

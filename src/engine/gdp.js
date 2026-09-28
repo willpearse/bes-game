@@ -2,16 +2,16 @@
 import { CONFIG } from '../data/config.js';
 import { BUILDINGS, FARM_WASTE_GDP_PENALTY } from '../data/buildings.js';
 import { SERVICE_KEYS } from '../data/services.js';
-import { within, isBuilt, isMarine, isResidential, isFarm, round1 } from './grid.js';
-import { wasteTokensAt } from './waste.js';
-import { happiness } from './happiness.js';
+import { within, idx, isBuilt, isMarine, isResidential, isFarm, round1 } from './grid.js';
+import { wasteTokensAt, wasteRelease } from './waste.js';
+import { happiness, totalResidents } from './happiness.js';
 import { emptyServices } from './services.js';
 
 const cfg = (state) => state.config ?? CONFIG;
 const defaultRecv = (cell) => cell.received;
 const isWaterSink = (c) => isMarine(c) || c.habitat === 'lake';
 
-// Income of one built tile this turn, before the happiness multiplier and upkeep. Never below 0.
+// Income of one built tile this turn, before the happiness multiplier and waste bill. Never below 0.
 export function tileIncome(state, cell, recv = defaultRecv) {
   const g = BUILDINGS[cell.building].gdp;
   const r = recv(cell);
@@ -34,13 +34,29 @@ export function tileIncome(state, cell, recv = defaultRecv) {
   return Math.max(0, v);
 }
 
-export function upkeep(cell) {
-  return BUILDINGS[cell.building].upkeep ?? 0;
+// Food made by one built tile this turn (farms and fishing fleets).
+export function tileFood(cell, recv = defaultRecv) {
+  const f = BUILDINGS[cell.building].food;
+  if (!f) return 0;
+  let v = f.base;
+  if (f.serviceBonus) v += Math.floor((recv(cell)?.[f.serviceBonus.service] ?? 0) / f.serviceBonus.divisor);
+  return v;
 }
 
-// Net GDP of one built tile this turn (income minus upkeep), before the happiness multiplier. Can be negative.
+// Food made, needed and bought in this turn. Residents eat foodPerResident each; any shortfall is bought in.
+export function foodBalance(state, recv = defaultRecv) {
+  const c = cfg(state);
+  let made = 0;
+  for (const cell of state.cells) if (isBuilt(cell)) made += tileFood(cell, recv);
+  const need = totalResidents(state) * c.foodPerResident;
+  const bought = Math.max(0, need - made);
+  return { made, need, bought, cost: round1(bought * c.foodImportPrice) };
+}
+
+// Net GDP of one built tile this turn (income minus waste bill), before the happiness multiplier. Can be negative.
 export function tileGdp(state, cell, recv = defaultRecv) {
-  return tileIncome(state, cell, recv) - upkeep(cell);
+  const r = wasteRelease(state, recv).get(idx(state, cell.row, cell.col));
+  return tileIncome(state, cell, recv) - r.released * cfg(state).wasteBillPerToken;
 }
 
 export function happinessMultiplier(state, H) {
@@ -48,24 +64,34 @@ export function happinessMultiplier(state, H) {
   return 1 + c.happinessGdpFactor * (H - c.happinessNeutral);
 }
 
-// Projected GDP for the current board. Returns { raw, total, H, perTile: [{ cell, gdp, income, upkeep }] }.
-// raw is the sum of net tile GDP. total applies the happiness multiplier to income (not upkeep) in perTurn mode.
+// Projected GDP for the current board. Returns { raw, total, income, H, perTile, food, bill }.
+// income is the sum of tile income before the happiness multiplier.
+// perTile: [{ cell, gdp, income, bill, released }], where gdp = income - bill.
+// total = sum of income x happiness multiplier (perTurn mode) - waste bills - food bought.
+// raw is the same without the multiplier.
 export function projectGdp(state, recv = defaultRecv) {
+  const c = cfg(state);
   const H = recv === defaultRecv ? state.happiness : happiness(state, recv).H;
-  const perTurn = cfg(state).happinessMode === 'perTurn';
-  const mult = perTurn ? happinessMultiplier(state, H) : 1;
-  let raw = 0;
-  let total = 0;
+  const mult = c.happinessMode === 'perTurn' ? happinessMultiplier(state, H) : 1;
+  const release = wasteRelease(state, recv);
+  const food = foodBalance(state, recv);
+  let raw = -food.cost;
+  let total = -food.cost;
+  let bill = 0;
+  let incomeSum = 0;
   const perTile = [];
   for (const cell of state.cells) {
     if (!isBuilt(cell)) continue;
     const income = tileIncome(state, cell, recv);
-    const cost = upkeep(cell);
-    raw += income - cost;
-    total += income * mult - cost;
-    perTile.push({ cell, gdp: income - cost, income, upkeep: cost });
+    const released = release.get(idx(state, cell.row, cell.col)).released;
+    const b = released * c.wasteBillPerToken;
+    bill += b;
+    incomeSum += income;
+    raw += income - b;
+    total += income * mult - b;
+    perTile.push({ cell, gdp: income - b, income, bill: b, released });
   }
-  return { raw, total: round1(total), H, perTile };
+  return { raw: round1(raw), total: round1(total), income: incomeSum, H, perTile, food, bill: round1(bill) };
 }
 
 const zeroAll = () => emptyServices();

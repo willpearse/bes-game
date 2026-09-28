@@ -6,6 +6,8 @@ import { intensityForPressure, biodiversityValue } from '../src/engine/intensity
 import { PREDICTS_B } from '../src/data/predicts.js';
 import { counterfactualGdp, projectGdp } from '../src/engine/gdp.js';
 import { cellAt } from '../src/engine/grid.js';
+import { tinyGame } from './helpers.js';
+import { CONFIG } from '../src/data/config.js';
 
 describe('rng', () => {
   it('is deterministic for a seed', () => {
@@ -99,8 +101,8 @@ describe('turn advance', () => {
     const s = createGame({ seed: 3 });
     const { state, log } = takeTurn(s, { type: 'pass' });
     const g = log.find((l) => l.type === 'gdp');
-    expect(g.total).toBeGreaterThan(0);
-    expect(state.cash).toBeCloseTo(10 + g.total, 5);
+    expect(typeof g.total).toBe('number');
+    expect(state.cash).toBeCloseTo(Math.max(0, 10 + g.total), 5);
     expect(state.score).toBeCloseTo(g.total, 5);
   });
   it('does not mutate its input', () => {
@@ -193,5 +195,36 @@ describe('cloneState', () => {
     expect(s.market.piles.B).not.toContain('x');
     expect(s.config.eventTurns).toHaveLength(3);
     expect(s.eventHistory[0].hit).not.toContain(1);
+  });
+});
+
+describe('maps', () => {
+  it('loads Mill valley with its own starting cash, housing target and buildings', () => {
+    const s = createGame({ seed: 1, mapId: 'millValley' });
+    expect(s.mapName).toBe('Mill valley');
+    expect(s.cash).toBe(15);
+    expect(s.housingTarget).toBe(30);
+    expect(s.residents).toBeGreaterThan(10);
+    const hill = s.cells.find((c) => c.building === 'hillFarm');
+    expect(hill.habitat).toBe('moorland'); // { building, habitat } form of startingBuildings
+    expect(s.cells.find((c) => c.building === 'factory')).toBeTruthy();
+    // Explicit config still beats the map.
+    expect(createGame({ seed: 1, mapId: 'millValley', config: { startingCash: 3, housingTarget: 7 } })).toMatchObject({ cash: 3, housingTarget: 7 });
+  });
+  it('plays a whole game on each map', () => {
+    for (const mapId of ['estuary', 'millValley']) {
+      let s = createGame({ seed: 2, mapId });
+      while (!s.gameOver) s = takeTurn(s, { type: 'pass' }).state;
+      expect(Number.isFinite(s.final.score)).toBe(true);
+    }
+  });
+});
+
+describe('map defaults', () => {
+  it('uses the map values when the config is the full CONFIG (as the title screen passes it)', () => {
+    const s = createGame({ seed: 1, config: { ...CONFIG, mapId: 'millValley' } });
+    expect(s).toMatchObject({ cash: 15, housingTarget: 30 });
+    const t = tinyGame(['#g']);
+    expect(t).toMatchObject({ cash: 10, housingTarget: 16 }); // MAP_DEFAULTS for a map without its own
   });
 });

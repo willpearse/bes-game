@@ -5,7 +5,8 @@ import { takeTurn, legalTargets, preview, choiceCost, canAfford, canRestore } fr
 import { drawTile, updateMarket, menuUnlocked } from '../src/engine/market.js';
 import { resolveEvent, tilesAtRisk, upcomingEvent, eventDamageFor } from '../src/engine/events.js';
 import { evaluateObjective, evaluateObjectives } from '../src/engine/objectives.js';
-import { tileGdp, tileIncome, projectGdp } from '../src/engine/gdp.js';
+import { tileGdp, tileIncome, tileFood, foodBalance, projectGdp } from '../src/engine/gdp.js';
+import { wasteRelease, resolveWasteTokens } from '../src/engine/waste.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 
@@ -153,12 +154,12 @@ describe('preview', () => {
   it('reports GDP, services, intensity changes, happiness and warnings', () => {
     const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
     const p = preview(s, { type: 'build', building: 'cottages' }, 3, 5);
-    expect(p.gdp).toBe(1);
+    expect(p.gdp).toBe(1 - (p.received.WAT >= 2 ? 0 : 1)); // income 1, less a £1 bill unless nature soaks up its waste
     expect(p.received.GRN).toBeGreaterThan(0);
     expect(p.cost).toBe(2);
     expect(p.intensityChanges.length).toBeGreaterThan(0);
     expect(typeof p.happinessDelta).toBe('number');
-    expect(p.gdpDelta).toBeGreaterThan(0);
+    expect(p.gdpDelta).toBeLessThan(0); // a new home with no farms: food to buy and a waste bill
     expect(p.sources.map((x) => x.service)).toEqual(['GRN']);
     const g = tinyGame(['#G']);
     const pw = preview(g, { type: 'build', building: 'cottages' }, 0, 1);
@@ -194,70 +195,139 @@ describe('preview', () => {
 });
 
 describe('GDP formulas', () => {
-  it('family farm earns 1 + floor(POL/2), minus waste, minus upkeep', () => {
+  it('family farm earns 1 + floor(POL/2), minus waste on it', () => {
     const s = tinyGame(['ggg', 'gFg', 'ggg'], { buildings: { F: 'familyFarm' } });
     expect(at(s, 1, 1).received.POL).toBe(6);
     expect(tileIncome(s, at(s, 1, 1))).toBe(4);
-    expect(tileGdp(s, at(s, 1, 1))).toBe(3); // upkeep 1
+    expect(tileGdp(s, at(s, 1, 1))).toBe(4); // WAT 3.2 soaks up its 1 waste: no bill
     at(s, 1, 1).waste = 2;
-    expect(tileGdp(s, at(s, 1, 1))).toBe(1);
+    expect(tileGdp(s, at(s, 1, 1))).toBe(2);
     at(s, 1, 1).waste = 9;
     expect(tileIncome(s, at(s, 1, 1))).toBe(0); // income never below 0
-    expect(tileGdp(s, at(s, 1, 1))).toBe(-1); // but upkeep is still due
   });
-  it('business park counts residential tiles within 2, max +3', () => {
+  it('business park counts residential tiles within 2, max +2', () => {
     const s = tinyGame(['##B##'], { buildings: { B: 'businessPark' } });
-    expect(tileGdp(s, at(s, 0, 2))).toBe(4);
+    expect(tileIncome(s, at(s, 0, 2))).toBe(2 + 2);
+    expect(tileGdp(s, at(s, 0, 2))).toBe(2 + 2 - 1); // no nature touching: £1 waste bill
     const s2 = tinyGame(['#B'], { buildings: { B: 'businessPark' } });
-    expect(tileGdp(s2, at(s2, 0, 1))).toBe(2);
+    expect(tileGdp(s2, at(s2, 0, 1))).toBe(2 + 1 - 1);
   });
   it('holiday park: green space, waste and water pollution', () => {
     const s = tinyGame(['mmm', 'mPm', 'mmo'], { buildings: { P: 'holidayPark' } });
     const c = at(s, 1, 1);
     expect(c.received.GRN).toBe(6); // 4 light moorland: 4 * 2 * 0.8 = 6.4, capped
-    expect(tileGdp(s, c)).toBe(1 + 3 - 1);
+    expect(tileGdp(s, c)).toBe(1 + 3);
     at(s, 0, 1).waste = 1;
-    expect(tileGdp(s, c)).toBe(1 + 3 - 2 - 1);
+    expect(tileGdp(s, c)).toBe(1 + 3 - 2);
     s.pollution = 10;
-    expect(tileGdp(s, c)).toBe(0 - 1);
+    expect(tileGdp(s, c)).toBe(0);
     const lake = tinyGame(['lmm', 'mPm', 'mmm'], { buildings: { P: 'holidayPark' } });
     lake.pollution = 5;
-    expect(tileGdp(lake, at(lake, 1, 1))).toBe(1 + 3 - 1 - 1); // a lake within 2 counts too
+    expect(tileGdp(lake, at(lake, 1, 1))).toBe(1 + 3 - 1); // a lake within 2 counts too
     const inland = tinyGame(['mmmmm', 'mPmmm', 'mmmmo'], { buildings: { P: 'holidayPark' } });
     inland.pollution = 50;
-    expect(tileGdp(inland, at(inland, 1, 1))).toBe(1 + 3 - 1); // no water within 2
+    expect(tileGdp(inland, at(inland, 1, 1))).toBe(1 + 3); // no water within 2
   });
-  it('fishing fleet: water service from touching seagrass, minus pollution', () => {
+  it('fishing fleet: water service from touching seagrass, minus pollution; it also lands food', () => {
     const s = tinyGame(['ozo', 'zFz', 'ooo'], { buildings: { F: 'fishingFleet' } });
     // Three light-use seagrass: 3 * 3 * 0.8 = 7.2 -> 6 -> +3.
-    expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3 - 1);
+    expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3);
+    expect(tileFood(at(s, 1, 1))).toBe(1 + 3);
     s.pollution = 7;
-    expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3 - 1 - 1);
+    expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3 - 1);
     s.pollution = 30;
-    expect(tileGdp(s, at(s, 1, 1))).toBe(-1);
+    expect(tileGdp(s, at(s, 1, 1))).toBe(0);
   });
   it('a loss-making tile shows a negative earning, and cash never goes below 0', () => {
-    const s = tinyGame(['gRg'], { buildings: { R: 'recycling' }, config: { startingCash: 0 } });
+    const s = tinyGame(['oPo'], { buildings: { P: 'holidayPark' }, config: { startingCash: 0 } });
+    s.pollution = 50; // wipes out its income; its waste bill is still due
     const { state, log } = takeTurn(s, { type: 'pass' });
     const g = log.find((l) => l.type === 'gdp');
     expect(g.earnings).toEqual([{ row: 0, col: 1, amount: -1 }]);
     expect(state.score).toBe(-1);
     expect(state.cash).toBe(0);
   });
-  it('upkeep is not multiplied by happiness', () => {
-    const s = tinyGame(['g#g', 'gTg'], { buildings: { T: 'towerBlock' } });
+  it('waste bills and food bought are not multiplied by happiness', () => {
+    const s = tinyGame(['g#g', 'gTo'], { buildings: { T: 'towerBlock' } });
     const p = projectGdp(s);
     const mult = 1 + 0.1 * (s.happiness - 5);
-    expect(p.total).toBeCloseTo((1 + 3) * mult - 1, 1);
-    expect(p.raw).toBe(1 + 3 - 1);
-    expect(p.perTile.find((t) => t.cell.building === 'towerBlock')).toMatchObject({ income: 3, upkeep: 1, gdp: 2 });
-  });
-  it('happiness multiplies GDP in perTurn mode but not endGame mode', () => {
-    const s = tinyGame(['g#g']);
-    const p = projectGdp(s);
-    expect(p.total).toBeCloseTo(p.raw * (1 + 0.1 * (s.happiness - 5)), 1);
+    expect(p.income).toBe(1 + 3);
+    expect(p.food).toEqual({ made: 0, need: 5, bought: 5, cost: 5 });
+    expect(p.total).toBeCloseTo(p.income * mult - p.bill - p.food.cost, 1);
+    expect(p.raw).toBeCloseTo(p.income - p.bill - p.food.cost, 5);
+    const t = p.perTile.find((x) => x.cell.building === 'towerBlock');
+    expect(t).toMatchObject({ income: 3, released: t.bill, gdp: 3 - t.bill });
     s.config.happinessMode = 'endGame';
     expect(projectGdp(s).total).toBe(projectGdp(s).raw);
+  });
+});
+
+describe('waste bill', () => {
+  it('nature touching a building soaks up 1 waste per 2 water it receives', () => {
+    const s = tinyGame(['ofo', 'fXf', 'ooo'], { buildings: { X: 'factory' } });
+    // Three light fens: WAT 3 * 3 * 0.8 = 7.2 -> 6 -> soaks up 3 of the factory's 3.
+    expect(wasteRelease(s).get(4)).toEqual({ made: 3, absorbed: 3, recycled: 0, released: 0 });
+    expect(tileGdp(s, at(s, 1, 1))).toBe(6);
+    const bare = tinyGame(['oXo'], { buildings: { X: 'factory' } });
+    expect(tileGdp(bare, at(bare, 0, 1))).toBe(6 - 3);
+    // With no nature at all (the counterfactual), nothing is soaked up.
+    expect(wasteRelease(s, () => ({ POL: 0, GRN: 0, WAT: 0 })).get(4).released).toBe(3);
+  });
+  it('recycling centres soak up waste from touching buildings, then clean tokens with what is left', () => {
+    const s = tinyGame(['oXRo'], { buildings: { X: 'factory', R: 'recycling' } });
+    const r = wasteRelease(s);
+    expect(r.get(1)).toMatchObject({ made: 3, recycled: 3, released: 0 });
+    expect(r.spare.get(2)).toBe(0);
+    const t = tinyGame(['o#Ro'], { buildings: { R: 'recycling' } });
+    at(t, 0, 3).waste = 0;
+    expect(wasteRelease(t).spare.get(2)).toBe(2); // the cottage's 1 waste used 1 of 3
+    at(t, 0, 2).waste = 5;
+    const rec = resolveWasteTokens(t, []);
+    expect(rec.recycled).toBe(1 + 2);
+    expect(at(t, 0, 2).waste).toBe(3);
+  });
+  it('only released waste becomes tokens, and the bill is summed each turn', () => {
+    let s = tinyGame(['oXo'], { buildings: { X: 'factory' }, config: { startingCash: 50 } });
+    const { state, log } = takeTurn(s, { type: 'pass' });
+    const w = log.find((l) => l.type === 'waste');
+    expect(w).toMatchObject({ produced: 3, absorbed: 0, released: 3 });
+    expect(log.find((l) => l.type === 'gdp').bill).toBe(3);
+    expect(state.stats.wasteBill).toBe(3);
+  });
+});
+
+describe('food', () => {
+  it('farms and fleets make food; residents eat it; the shortfall is bought in', () => {
+    const s = tinyGame(['ggg', 'gFg', 'g#g'], { buildings: { F: 'familyFarm' } });
+    const farm = at(s, 1, 1);
+    expect(tileFood(farm)).toBe(1 + Math.floor(farm.received.POL / 2));
+    expect(tileFood(at(s, 2, 1))).toBe(0); // cottages make no food
+    expect(foodBalance(s)).toEqual({ made: tileFood(farm), need: 1, bought: 0, cost: 0 });
+    const hungry = tinyGame(['##T'], { buildings: { T: 'towerBlock' } });
+    expect(foodBalance(hungry)).toEqual({ made: 0, need: 6, bought: 6, cost: 6 });
+    expect(hungry.food).toEqual(foodBalance(hungry));
+    // Without pollination the farm makes less, so more food is bought: nature's value includes food.
+    const noPol = foodBalance(s, (c) => ({ ...c.received, POL: 0 }));
+    expect(noPol.made).toBe(1);
+  });
+  it('records food and its cost each turn', () => {
+    const s = tinyGame(['##g'], { config: { startingCash: 50 } });
+    const { state, log } = takeTurn(s, { type: 'pass' });
+    expect(log.find((l) => l.type === 'gdp').food).toMatchObject({ need: 2, bought: 2, cost: 2 });
+    expect(state.stats.foodCost).toBe(2);
+    expect(state.history[0]).toMatchObject({ residents: 2, food: 0, foodNeed: 2 });
+  });
+});
+
+describe('housing target', () => {
+  it('charges for each resident short of the target at the end', () => {
+    let s = tinyGame(['#gg'], { config: { turns: 1, eventTurns: [], housingTarget: 5 } });
+    s = takeTurn(s, { type: 'pass' }).state;
+    expect(s.final).toMatchObject({ housingTarget: 5, residents: 1, housingShortfall: 4, housingPenalty: 40 });
+    expect(s.final.score).toBeCloseTo(s.final.gdpAfterDamage + s.final.objectiveBonus - 40, 5);
+    let t = tinyGame(['#gg'], { config: { turns: 1, eventTurns: [], housingTarget: 1 } });
+    t = takeTurn(t, { type: 'pass' }).state;
+    expect(t.final.housingPenalty).toBe(0);
   });
 });
 
@@ -267,18 +337,19 @@ describe('events', () => {
     s.events = [{ turn: 1, id: 'riverFlood' }];
     return s;
   }
-  it('hits unprotected tiles for max(2, 4 x GDP)', () => {
+  it('hits unprotected tiles for max(4, 8 x GDP)', () => {
     const s = floodGame(['r#']);
     s.cash = 20;
     const log = [];
     const rep = resolveEvent(s, 'riverFlood', log);
     expect(rep.hit).toHaveLength(1);
-    expect(rep.damage).toBe(4); // cottages GDP 1 -> 4
+    expect(rep.damage).toBe(4); // cottages GDP 1 - £1 waste bill = 0 -> the £4 minimum
     expect(s.cash).toBe(16);
     expect(s.score).toBe(-4);
     expect(s.stats.eventHits).toBe(1);
-    expect(eventDamageFor(s, 0)).toBe(2);
-    expect(eventDamageFor(s, 0.3)).toBe(2);
+    expect(eventDamageFor(s, 0)).toBe(4);
+    expect(eventDamageFor(s, 0.3)).toBe(4);
+    expect(eventDamageFor(s, 2)).toBe(16);
   });
   it('protects tiles with WAT >= 3 and names the protector', () => {
     const s = floodGame(['ffr', 'f#r', 'ffr']);
@@ -287,8 +358,8 @@ describe('events', () => {
     expect(rep.protected).toHaveLength(1);
     expect(rep.protected[0].by.name).toBe('Fen and reedbed');
     expect(rep.messages[0]).toBe('Your fen and reedbed protected 1 tile from the river flood.');
-    expect(rep.avoided).toBe(4);
-    expect(s.stats.eventDamageAvoided).toBe(4);
+    expect(rep.avoided).toBe(8); // GDP 1 (the fens soak up its waste) -> 8
+    expect(s.stats.eventDamageAvoided).toBe(8);
   });
   it('threshold is exactly 3', () => {
     const s = floodGame(['r#']);
@@ -343,7 +414,6 @@ describe('objectives', () => {
     s.happiness = 8;
     expect(evaluateObjective(s, 'happyPlace').met).toBe(true);
     expect(evaluateObjective(s, 'thrivingWildlife').met).toBe(true);
-    expect(evaluateObjective(s, 'growingCommunity').met).toBe(false);
     expect(evaluateObjective(s, 'weatheredIt').met).toBe(true);
     s.stats.eventHits = 1;
     expect(evaluateObjective(s, 'weatheredIt').met).toBe(false);
@@ -360,14 +430,16 @@ describe('objectives', () => {
     s.events = [];
     for (let i = 0; i < 24; i++) s = takeTurn(s, { type: 'pass' }).state;
     expect(s.final.objectiveBonus).toBe(s.final.objectives.filter((o) => o.met).length * 50);
-    expect(s.final.score).toBeCloseTo(s.final.gdpAfterDamage + s.final.objectiveBonus, 5);
+    expect(s.final.score).toBeCloseTo(s.final.gdpAfterDamage + s.final.objectiveBonus - s.final.housingPenalty, 5);
+    expect(s.final.housingShortfall).toBe(16 - 2);
   });
   it('endGame happiness mode multiplies total GDP at the end', () => {
     let s = createGame({ seed: 8, config: { happinessMode: 'endGame' } });
     for (let i = 0; i < 24; i++) s = takeTurn(s, { type: 'pass' }).state;
     const f = s.final;
     expect(f.endMultiplier).toBeCloseTo(1 + 0.1 * (s.happiness - 5), 5);
-    expect(f.gdpAfterDamage).toBeCloseTo((s.gdpEarned - s.eventDamage) * f.endMultiplier, 0);
+    // The multiplier applies to income only; waste bills and food bought are not boosted.
+    expect(f.gdpAfterDamage).toBeCloseTo(s.gdpEarned + s.cf.income.actual * (f.endMultiplier - 1) - s.eventDamage, 0);
     expect(f.natureContribution).toBeGreaterThanOrEqual(0);
   });
 });

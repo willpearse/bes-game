@@ -22,7 +22,8 @@ export function cloneState(st) {
   return {
     ...st,
     config: { ...st.config, objectives: st.config.objectives ? st.config.objectives.slice() : st.config.objectives, eventTurns: st.config.eventTurns.slice(), marketSurcharge: st.config.marketSurcharge.slice(),
-      pressureThresholds: st.config.pressureThresholds.slice(), stageStartTurns: { ...st.config.stageStartTurns } },
+      stageStartTurns: { ...st.config.stageStartTurns } },
+    food: st.food ? { ...st.food } : st.food,
     cells: st.cells.map((c) => ({ ...c, supply: copyServices(c.supply), received: copyServices(c.received) })),
     market: st.market ? { slots: st.market.slots.slice(), piles: Object.fromEntries(Object.entries(st.market.piles).map(([k, v]) => [k, v.slice()])) } : null,
     events: st.events.map((e) => ({ ...e })),
@@ -32,7 +33,7 @@ export function cloneState(st) {
     stats: { ...st.stats },
     startHabitats: { ...st.startHabitats },
     objectiveOffer: st.objectiveOffer.slice(),
-    cf: { ...st.cf, without: { ...st.cf.without } },
+    cf: { ...st.cf, without: { ...st.cf.without }, income: { ...st.cf.income, without: { ...st.cf.income.without } } },
     history: st.history.map((h) => ({ ...h })),
     final: st.final ? structuredClone(st.final) : null
   };
@@ -301,11 +302,14 @@ export function takeTurn(state, action) {
   const proj = projectGdp(s);
   const mult = c.happinessMode === 'perTurn' ? happinessMultiplier(s, s.happiness) : 1;
   const earnings = [];
-  for (const { cell, gdp, income, upkeep } of proj.perTile) {
+  for (const { cell, gdp, income, bill } of proj.perTile) {
     cell.gdp = gdp;
-    const amount = round1(income * mult - upkeep);
+    const amount = round1(income * mult - bill);
     if (amount !== 0) earnings.push({ row: cell.row, col: cell.col, amount });
   }
+  s.food = proj.food;
+  s.stats.foodCost = round1((s.stats.foodCost ?? 0) + proj.food.cost);
+  s.stats.wasteBill = round1((s.stats.wasteBill ?? 0) + proj.bill);
   s.cash = round1(Math.max(0, s.cash + proj.total));
   s.score = round1(s.score + proj.total);
   s.gdpEarned = round1(s.gdpEarned + proj.total);
@@ -314,7 +318,11 @@ export function takeTurn(state, action) {
   s.cf.actual = round1(s.cf.actual + proj.total);
   s.cf.noNature = round1(s.cf.noNature + cf.noNature.total);
   for (const k of SERVICE_KEYS) s.cf.without[k] = round1(s.cf.without[k] + cf.without[k].total);
-  log.push({ type: 'gdp', total: proj.total, raw: proj.raw, happiness: s.happiness, earnings });
+  const inc = s.cf.income;
+  inc.actual = round1(inc.actual + proj.income);
+  inc.noNature = round1(inc.noNature + cf.noNature.income);
+  for (const k of SERVICE_KEYS) inc.without[k] = round1(inc.without[k] + cf.without[k].income);
+  log.push({ type: 'gdp', total: proj.total, raw: proj.raw, happiness: s.happiness, earnings, food: proj.food, bill: proj.bill });
 
   // 10. Waste.
   resolveWaste(s, log);
@@ -325,7 +333,8 @@ export function takeTurn(state, action) {
 
   s.history.push({
     turn: s.turn, gdp: proj.total, cash: s.cash, score: s.score, happiness: s.happiness,
-    intactness: round1(intactness(s) * 1000) / 1000, pollution: s.pollution
+    intactness: round1(intactness(s) * 1000) / 1000, pollution: s.pollution,
+    residents: s.residents, food: proj.food.made, foodNeed: proj.food.need
   });
 
   // 12. Advance.
@@ -350,34 +359,44 @@ export function endGame(s, log) {
   const c = cfg(s);
   const objectives = evaluateObjectives(s);
   const bonus = objectives.filter((o) => o.met).length * c.objectiveBonus;
-  let gdpTotal = round1(s.gdpEarned - s.eventDamage);
   const cf = { actual: s.cf.actual, noNature: s.cf.noNature, without: { ...s.cf.without } };
   let endMultiplier = 1;
+  let gdpEarned = s.gdpEarned;
   if (c.happinessMode === 'endGame') {
+    // The end multiplier applies to income only (not waste bills or food bought), as each turn does in perTurn mode.
+    const boost = (total, income, H) => round1(total + income * (happinessMultiplier(s, H) - 1));
     endMultiplier = happinessMultiplier(s, s.happiness);
-    gdpTotal = round1(gdpTotal * endMultiplier);
+    gdpEarned = boost(s.gdpEarned, s.cf.income.actual, s.happiness);
     // Counterfactuals use the happiness each would have had on the final board.
-    const noNatureH = happiness(s, () => emptyServices()).H;
-    cf.actual = round1(cf.actual * endMultiplier);
-    cf.noNature = round1(cf.noNature * happinessMultiplier(s, noNatureH));
+    cf.actual = gdpEarned;
+    cf.noNature = boost(cf.noNature, s.cf.income.noNature, happiness(s, () => emptyServices()).H);
     for (const k of SERVICE_KEYS) {
-      const h = happiness(s, (cell) => ({ ...cell.received, [k]: 0 })).H;
-      cf.without[k] = round1(cf.without[k] * happinessMultiplier(s, h));
+      cf.without[k] = boost(cf.without[k], s.cf.income.without[k], happiness(s, (cell) => ({ ...cell.received, [k]: 0 })).H);
     }
   }
-  const score = round1(gdpTotal + bonus);
+  const gdpTotal = round1(gdpEarned - s.eventDamage);
+  const housingShortfall = Math.max(0, s.housingTarget - s.residents);
+  const housingPenalty = housingShortfall * c.housingPenaltyPerResident;
+  const score = round1(gdpTotal + bonus - housingPenalty);
   const natureContribution = round1(cf.actual - cf.noNature);
   const perService = Object.fromEntries(SERVICE_KEYS.map((k) => [k, round1(cf.actual - cf.without[k])]));
   s.score = score;
   s.gameOver = true;
   s.final = {
     score,
-    gdp: round1(s.gdpEarned * endMultiplier),
+    gdp: gdpEarned,
     gdpAfterDamage: gdpTotal,
     eventDamage: s.eventDamage,
     endMultiplier,
     objectives: objectives.map((o) => ({ ...o, bonus: o.met ? c.objectiveBonus : 0 })),
     objectiveBonus: bonus,
+    housingTarget: s.housingTarget,
+    residents: s.residents,
+    housingShortfall,
+    housingPenalty,
+    foodCost: s.stats.foodCost ?? 0,
+    wasteBill: s.stats.wasteBill ?? 0,
+    pollution: s.pollution,
     natureContribution,
     natureShare: cf.actual > 0 ? natureContribution / cf.actual : 0,
     perService,

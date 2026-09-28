@@ -12,6 +12,13 @@ export function gdpLabel(id) {
   return parts.join(' + ');
 }
 
+// Food a building makes each turn, as a short label ("1 + pollination"), or null.
+export function foodLabel(id) {
+  const f = BUILDINGS[id].food;
+  if (!f) return null;
+  return f.serviceBonus ? `${f.base} + ${SERVICES[f.serviceBonus.service].short.toLowerCase()}` : `${f.base}`;
+}
+
 export function landUseText(cell) {
   return `${LAND_USE_NAMES[cell.landUse]}, ${cell.intensity} use`;
 }

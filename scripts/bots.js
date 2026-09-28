@@ -1,17 +1,18 @@
 // Bots for headless balance runs (scripts/simulate.js, scripts/payoff.js).
 // Each bot is one simple rule, described in BOT_RULES so reports can say what was played.
 import { createGame } from '../src/engine/state.js';
-import { takeTurn, legalTargets, preview, choiceCost } from '../src/engine/actions.js';
+import { takeTurn, legalTargets, preview, choiceCost, choiceBuilding } from '../src/engine/actions.js';
 import { menuUnlocked } from '../src/engine/market.js';
 import { cellAt, ortho, isNature } from '../src/engine/grid.js';
 import { mulberry32 } from '../src/engine/rng.js';
 import { RESTORATION_KEYS } from '../src/data/restorations.js';
+import { BUILDINGS } from '../src/data/buildings.js';
 
 export const BOT_RULES = {
   random: 'Picks pass, build or restore at random, then a random legal choice and square.',
-  greedy: "Takes the build or restoration with the best gain in this turn's GDP per pound spent; passes if nothing gains.",
-  nature: 'Never builds. Every turn it makes the restoration that would add most GDP once the habitat has grown, then most happiness, then most biodiversity.',
-  balanced: 'Builds like greedy, but only off ancient habitat and where the new tile keeps at least two nature squares touching it; otherwise restores like the nature bot.'
+  greedy: "Takes the build or restoration with the best gain in this turn's GDP per pound spent (but builds the best home when behind the housing target's pace); passes if nothing gains.",
+  nature: 'Builds only when short of food (a farm or fleet) or of the housing target (a home), on the square with most nature touching it; otherwise makes the restoration that would add most GDP once grown, then most happiness, then most biodiversity.',
+  balanced: 'Builds like greedy (including keeping pace with the housing target), but only off ancient habitat and where the new tile keeps at least two nature squares touching it; otherwise restores like the nature bot.'
 };
 
 // All choices (without a target) available this turn.
@@ -77,6 +78,19 @@ function wellSpaced(state, a) {
   return ortho(state, a.row, a.col).filter(isNature).length >= 2;
 }
 
+// Behind the housing target's pace: fewer residents than target x turn / turns.
+const behindOnHomes = (state) => state.residents < (state.housingTarget * state.turn) / state.config.turns;
+const isHome = (state, a) => BUILDINGS[choiceBuilding(state, a)].residents > 0;
+
+// Greedy's choice among builds (and restorations): best GDP gain per pound, or the best home when behind on homes.
+function greedyPick(state, builds, restores) {
+  if (behindOnHomes(state)) {
+    const home = best(builds.filter((a) => isHome(state, a)), (a) => perPound(state, a), -Infinity);
+    if (home) return home;
+  }
+  return best([...builds, ...restores], (a) => perPound(state, a));
+}
+
 export const BOTS = {
   random(state, rng) {
     const acts = actionsFor(state);
@@ -88,14 +102,27 @@ export const BOTS = {
   },
   greedy(state) {
     const acts = actionsFor(state);
-    return best([...acts.build, ...acts.restore], (a) => perPound(state, a)) ?? { type: 'pass' };
+    return greedyPick(state, acts.build, acts.restore) ?? { type: 'pass' };
   },
   nature(state) {
-    return bestRestoration(state, actionsFor(state).restore) ?? { type: 'pass' };
+    const acts = actionsFor(state);
+    const hungry = state.food && state.food.made < state.food.need;
+    const needHomes = state.residents < state.housingTarget;
+    const wanted = (a) => {
+      const b = BUILDINGS[choiceBuilding(state, a)];
+      return hungry ? Boolean(b.food) : needHomes && b.residents > 0;
+    };
+    let build = null;
+    let key = null;
+    for (const a of acts.build.filter(wanted)) {
+      const k = [ortho(state, a.row, a.col).filter(isNature).length, preview(state, a, a.row, a.col).gdpDelta];
+      if (!key || better(k, key)) { build = a; key = k; }
+    }
+    return build ?? bestRestoration(state, acts.restore) ?? { type: 'pass' };
   },
   balanced(state) {
     const acts = actionsFor(state);
-    const build = best(acts.build.filter((a) => wellSpaced(state, a)), (a) => perPound(state, a));
+    const build = greedyPick(state, acts.build.filter((a) => wellSpaced(state, a)), []);
     return build ?? bestRestoration(state, acts.restore) ?? { type: 'pass' };
   }
 };
@@ -135,7 +162,7 @@ export function variantConfig(args) {
   if (args.market) config.marketMode = args.market === 'menu' ? 'menu' : 'market';
   if (args.waste) config.wasteMode = args.waste === 'simple' ? 'simple' : 'tokens';
   if (args.happiness) config.happinessMode = args.happiness === 'endGame' ? 'endGame' : 'perTurn';
-  if (args.pressure) config.populationPressure = ['1', 'true', 'on'].includes(String(args.pressure));
+  if (args.map) config.mapId = args.map;
   return config;
 }
 

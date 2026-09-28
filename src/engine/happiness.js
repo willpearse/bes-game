@@ -61,12 +61,7 @@ export function happiness(state, recv = defaultRecv) {
     residents += n;
     list.push({ cell, w });
   }
-  let H = residents > 0 ? weighted / residents : c.noResidentsHappiness;
-  H = round1(H);
-  if (c.populationPressure) {
-    const reached = c.pressureThresholds.filter((t) => residents >= t).length;
-    H = round1(Math.max(0, H - c.populationPressurePenalty * reached));
-  }
+  const H = round1(residents > 0 ? weighted / residents : c.noResidentsHappiness);
   return { H, residents, wellbeing: list };
 }
 

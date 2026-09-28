@@ -10,14 +10,15 @@ Ideas and open questions for later sessions. Newest designer requests first.
 
 - **Waste is too fast and too hard to fight.** Waste reaches the sea within a turn or two (river tokens move up to 3 squares a turn), and players will struggle to see how to deal with it. Once waste is in the sea or a lake, the only clean-up is healthy seagrass (0.5 a turn per cell; 4 cells on the estuary map). It gets worse: at water pollution 10+, all sea and lake cells gain pressure, which can push seagrass to intense use and switch its cleaning off. Prevention (wetlands by the river, recycling centres) exists and a first-game hint mentions it, but it is still hard to see. Ideas: slow the flow (fewer river steps, or waste pauses on each square); show where waste is going and what is cleaning it (for example a "waste this turn" breakdown: made, cleaned by fen, reached the sea); hint at the counter-play when waste first reaches the river or sea; add direct sea clean-up with its own costs (restoring oyster or mussel beds, a sewage works tile); stop the 10+ pollution trap from shutting seagrass down entirely.
 
-## Balance (from `npm run simulate`, see NOTES.md)
+## Balance (from `npm run simulate`, see NOTES.md 45 to 52 and `reports/`)
 
-- Upkeep values, the service cap (6) and the four-square reach were first guesses after the simplification (NOTES 36 to 42). They need tuning against the simulator and real play.
-- The greedy bot still scores well above the random bot and loses several ancient cells a game. It only looks one turn ahead, so it never values restoration; a bot that plans ahead would test whether restoring now pays back.
-- Hazards and upkeep look too weak to change decisions (NOTES 44): events cost about 7% of income and an unprotected tile expects to lose about 3 turns of its GDP a game; upkeep rarely stops a build paying back within 2 turns. Options to test with `npm run payoff`: a larger damage multiplier or damage that lasts (a tile out of action for some turns), events every stage, upkeep that grows with neighbouring pressure or waste, higher upkeep on the nature-independent big earners (factory, business park).
-- The balanced bot never restores, because a well-spaced build that gains GDP is always available. A restoration only pays if it beats a new build within the turns left.
+- **Mill valley cannot be repaired with nature.** The town is so dense that no square next to a home can be restored, so waste bills (33 to 47% of income), low happiness (about 4) and pollution (about 150) are locked in. Ideas: leave gaps in the town (pocket parks, a riverside strip) that can be restored; a "green the streets" restoration on cottages (a street tree or pocket park that supplies a little GRN and WAT); make the starting factory the main polluter so one wetland makes a visible difference.
+- **Restoration rarely pays within 24 turns.** A restored square supplies little until it matures (B 0.6, then 0.75 after 3 turns, 0.9 after 7). Options: faster succession, a higher B for young habitat, or restorations that give something at once (for example a wetland soaks up waste straight away).
+- **Nothing at sea can be protected from storm surges** unless seagrass is next door, so offshore wind farms and harbours lose money on Mill valley. Options: storm surges only hit land tiles, or offshore tiles are built to cope.
+- **Pollution penalties are steep on Mill valley**: fleets earn nothing there. Consider a cap on the −pollution/5 penalties, or a faster dispersal.
+- The greedy and balanced bots only look one turn ahead; a bot that plans ahead would show whether restoring early pays back.
+- Check each objective with the simulator on both maps: how often each is met by each bot.
 - Restoring mature habitat lowers intactness until it matures (young B 0.6), which works against Biodiversity net gain and Thriving wildlife. Decide whether that is the intended lesson.
-- Check each objective with the simulator: how often each is met by each bot, and whether any is trivially met or near impossible on the estuary map.
 
 ## Open questions (moved from NOTES.md)
 

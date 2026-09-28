@@ -17,5 +17,7 @@
   ],
   "startingBuildings": { "#": "cottages" },
   "startingBuildingHabitat": "meadow",
+  "startingCash": 10,
+  "housingTarget": 16,
   "elevation": "valleyFormula"
 }

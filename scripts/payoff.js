@@ -10,7 +10,9 @@ import { PREDICTS_B } from '../src/data/predicts.js';
 import { CONFIG } from '../src/data/config.js';
 import { EVENTS } from '../src/data/events.js';
 import { MAPS } from '../src/data/maps/index.js';
-import { ortho, isBuilt, isNature } from '../src/engine/grid.js';
+import { ortho, idx, isBuilt, isNature } from '../src/engine/grid.js';
+import { wasteRelease } from '../src/engine/waste.js';
+import { tileFood } from '../src/engine/gdp.js';
 import { BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.js';
 
 const args = parseArgs(process.argv.slice(2));
@@ -55,6 +57,13 @@ function theoryIncome(id, k) {
   if (g.nearbyResidential) v += g.nearbyResidential.max;
   return v;
 }
+// Waste bill: waste the touching nature cannot soak up (1 per wasteAbsorbDivisor water received).
+const theoryBill = (id, k) => Math.max(0, BUILDINGS[id].waste - Math.floor(theoryServices(id, k).WAT / cfg.wasteAbsorbDivisor)) * cfg.wasteBillPerToken;
+function theoryFood(id, k) {
+  const f = BUILDINGS[id].food;
+  if (!f) return 0;
+  return f.base + (f.serviceBonus ? Math.floor(theoryServices(id, k)[f.serviceBonus.service] / f.serviceBonus.divisor) : 0);
+}
 const theoryWellbeing = (id, k) => Math.min(WELLBEING.max,
   BUILDINGS[id].wellbeingBase + Math.min(WELLBEING.greenCap, theoryServices(id, k).GRN) / WELLBEING.greenDivisor);
 
@@ -69,7 +78,8 @@ function collect(bot) {
   const tileTurns = []; // { id, k, net, gross, mult, wellbeing, received }
   const tiles = new Map(); // key -> { id, placed, turns, net, damage, cost }
   const hazards = { atRisk: 0, hit: 0, damage: 0 };
-  let upkeep = 0;
+  let bills = 0;
+  let foodCost = 0;
   let grossAfterH = 0;
   const Hs = [];
   for (let g = 0; g < games; g++) {
@@ -79,6 +89,9 @@ function collect(bot) {
       const mult = cfg.happinessMode === 'perTurn' ? 1 + cfg.happinessGdpFactor * (gdp.happiness - cfg.happinessNeutral) : 1;
       Hs.push(gdp.happiness);
       const earn = new Map(gdp.earnings.map((e) => [`${e.row},${e.col}`, e.amount]));
+      // Services and buildings are unchanged by the waste step, so this is the release used for this turn's GDP.
+      const release = wasteRelease(state);
+      foodCost += gdp.food.cost;
       const seen = new Set();
       for (const cell of state.cells) {
         if (!isBuilt(cell)) continue;
@@ -87,18 +100,20 @@ function collect(bot) {
         let t = live.get(pos);
         if (!t || t.id !== cell.building) {
           const built = action.type === 'build' && action.row === cell.row && action.col === cell.col;
-          t = { id: cell.building, placed: state.turn, turns: 0, net: 0, damage: 0, cost: built ? BUILDINGS[cell.building].cost : 0, start: !built };
+          t = { id: cell.building, placed: state.turn, turns: 0, net: 0, food: 0, damage: 0, cost: built ? BUILDINGS[cell.building].cost : 0, start: !built };
           live.set(pos, t);
           tiles.set(`${g}:${pos}:${state.turn}`, t);
         }
-        const up = BUILDINGS[cell.building].upkeep ?? 0;
+        const bill = release.get(idx(state, cell.row, cell.col)).released * cfg.wasteBillPerToken;
         const net = earn.get(pos) ?? 0;
+        const food = tileFood(cell);
         t.turns += 1;
         t.net += net;
-        upkeep += up;
-        grossAfterH += net + up;
+        t.food += food;
+        bills += bill;
+        grossAfterH += net + bill;
         const k = ortho(state, cell.row, cell.col).filter(isNature).length;
-        tileTurns.push({ id: cell.building, k, net, gross: net + up, mult, wellbeing: cell.wellbeing, received: cell.received });
+        tileTurns.push({ id: cell.building, k, net, bill, food, mult, wellbeing: cell.wellbeing, received: cell.received });
       }
       for (const pos of [...live.keys()]) if (!seen.has(pos)) live.delete(pos);
       const ev = log.find((l) => l.type === 'event');
@@ -113,7 +128,7 @@ function collect(bot) {
       }
     });
   }
-  return { tileTurns, tiles: [...tiles.values()], hazards, upkeep, grossAfterH, H: mean(Hs) };
+  return { tileTurns, tiles: [...tiles.values()], hazards, bills, foodCost, grossAfterH, H: mean(Hs) };
 }
 
 // ---------- report ----------
@@ -123,8 +138,9 @@ console.log(`\nVariant: ${JSON.stringify(config)}. "Touching nature" (k) counts 
 console.log(`\nTheory assumes each touching nature square supplies the map's average habitat at light use (B ${B_LIGHT}). ` +
   `Land: ${SERVICE_KEYS.map((s) => `${s} ${f2(perSquare.land[s])}`).join(', ')}. ` +
   `Sea (for harbour, fleet and wind farm): ${SERVICE_KEYS.map((s) => `${s} ${f2(perSquare.sea[s])}`).join(', ')}. ` +
-  `Received is capped at ${cfg.serviceCap}. Theory ignores waste and pollution, and gives a business park its full +3 for homes. ` +
-  `Net = income x happiness multiplier - upkeep.`);
+  `Received is capped at ${cfg.serviceCap}. Theory ignores waste tokens and pollution, and gives a business park its full bonus for homes. ` +
+  `Net = income x happiness multiplier - waste bill (1 per waste token that touching nature cannot soak up). ` +
+  `Food is shown separately: each unit saves £${cfg.foodImportPrice} of food the town would otherwise buy, and each resident eats ${cfg.foodPerResident}.`);
 
 const all = {};
 for (const bot of bots) {
@@ -134,31 +150,31 @@ for (const bot of bots) {
 }
 
 console.log('\n## Bots\n');
-console.log('| Bot | Rule | Mean H | Tile-turns | Upkeep as % of income | Event damage as % of income | Tiles at risk hit |');
-console.log('|---|---|---|---|---|---|---|');
+console.log('| Bot | Rule | Mean H | Tile-turns | Waste bills as % of income | Food bought as % of income | Event damage as % of income | Tiles at risk hit |');
+console.log('|---|---|---|---|---|---|---|---|');
 for (const bot of bots) {
   const d = all[bot];
-  console.log(`| ${bot} | ${BOT_RULES[bot]} | ${f1(d.H)} | ${d.tileTurns.length} | ${pct(d.upkeep / d.grossAfterH)} | ${pct(d.hazards.damage / d.grossAfterH)} | ${d.hazards.hit}/${d.hazards.atRisk} (${pct(d.hazards.hit / d.hazards.atRisk)}) |`);
+  console.log(`| ${bot} | ${BOT_RULES[bot]} | ${f1(d.H)} | ${d.tileTurns.length} | ${pct(d.bills / d.grossAfterH)} | ${pct(d.foodCost / d.grossAfterH)} | ${pct(d.hazards.damage / d.grossAfterH)} | ${d.hazards.hit}/${d.hazards.atRisk} (${pct(d.hazards.hit / d.hazards.atRisk)}) |`);
 }
 
 // Net GDP per turn by touching nature, pooled over bots, with theory at H 5 and at the pooled mean H.
 const pooled = bots.flatMap((b) => all[b].tileTurns);
 const pooledMult = mean(pooled.map((t) => t.mult));
 console.log(`\n## Net GDP per turn by touching nature (all bots pooled)\n`);
-console.log(`Each cell: observed mean £ per tile per turn (number of tile-turns), then theory at the pooled mean multiplier x${f2(pooledMult)}. Theory at H 5 is income - upkeep.`);
-console.log('\n| Building | Upkeep | ' + [0, 1, 2, 3, 4].map((k) => `k=${k}`).join(' | ') + ' | Theory at H 5, k=0 → 4 |');
-console.log('|---|---|' + [0, 1, 2, 3, 4].map(() => '---').join('|') + '|---|');
+console.log(`Each cell: observed mean net £ per tile per turn (number of tile-turns), then theory at the pooled mean multiplier x${f2(pooledMult)}. Last columns: theory at H 5 (income - waste bill), and food made per turn in theory.`);
+console.log('\n| Building | Waste | ' + [0, 1, 2, 3, 4].map((k) => `k=${k}`).join(' | ') + ' | Theory at H 5, k=0 → 4 | Food, k=0 → 4 |');
+console.log('|---|---|' + [0, 1, 2, 3, 4].map(() => '---').join('|') + '|---|---|');
 for (const id of IDS) {
   const rows = pooled.filter((t) => t.id === id);
   if (!rows.length) continue;
-  const up = BUILDINGS[id].upkeep ?? 0;
   const cells = [0, 1, 2, 3, 4].map((k) => {
     const r = rows.filter((t) => t.k === k);
-    const th = theoryIncome(id, k) * pooledMult - up;
+    const th = theoryIncome(id, k) * pooledMult - theoryBill(id, k);
     return r.length ? `${f1(mean(r.map((t) => t.net)))} (${r.length}) vs ${f1(th)}` : `– vs ${f1(th)}`;
   });
-  const h5 = [0, 1, 2, 3, 4].map((k) => theoryIncome(id, k) - up).join(' → ');
-  console.log(`| ${BUILDINGS[id].name} | ${up} | ${cells.join(' | ')} | ${h5} |`);
+  const h5 = [0, 1, 2, 3, 4].map((k) => theoryIncome(id, k) - theoryBill(id, k)).join(' → ');
+  const fd = BUILDINGS[id].food ? [0, 1, 2, 3, 4].map((k) => theoryFood(id, k)).join(' → ') : '–';
+  console.log(`| ${BUILDINGS[id].name} | ${BUILDINGS[id].waste} | ${cells.join(' | ')} | ${h5} | ${fd} |`);
 }
 
 // Homes: wellbeing by touching nature, observed vs theory.
@@ -177,9 +193,9 @@ for (const id of IDS.filter((i) => BUILDINGS[i].residents > 0)) {
 
 // Lifetime pay-off of tiles the bots built (not the starting village).
 console.log('\n## Lifetime pay-off of each building placed (all bots pooled)\n');
-console.log('Mean over tiles built during play. Pay-off = net GDP earned - cost - event damage. Hazard theory: expected event cost per turn if exposed to one kind of event and unprotected, at the observed mean net GDP.');
-console.log('\n| Building | Tiles | Cost | Turns kept | Net GDP/turn | Event damage/turn | Hazard theory/turn | Pay-off | Turns to pay back cost |');
-console.log('|---|---|---|---|---|---|---|---|---|');
+console.log(`Mean over tiles built during play. Pay-off = net GDP earned + food made x £${cfg.foodImportPrice} - food eaten by its residents x £${cfg.foodImportPrice} - cost - event damage. Hazard theory: expected event cost per turn if exposed to one kind of event and unprotected, at the observed mean net GDP.`);
+console.log('\n| Building | Tiles | Cost | Turns kept | Net GDP/turn | Food value/turn | Event damage/turn | Hazard theory/turn | Pay-off | Turns to pay back cost |');
+console.log('|---|---|---|---|---|---|---|---|---|---|');
 const built = bots.flatMap((b) => all[b].tiles.filter((t) => !t.start));
 for (const id of IDS) {
   const ts = built.filter((t) => t.id === id);
@@ -187,9 +203,13 @@ for (const id of IDS) {
   const turns = mean(ts.map((t) => t.turns));
   const netPerTurn = ts.reduce((a, t) => a + t.net, 0) / ts.reduce((a, t) => a + t.turns, 0);
   const dmgPerTurn = ts.reduce((a, t) => a + t.damage, 0) / ts.reduce((a, t) => a + t.turns, 0);
-  const payoff = mean(ts.map((t) => t.net - t.cost - t.damage));
-  const payback = netPerTurn > 0 ? BUILDINGS[id].cost / netPerTurn : Infinity;
-  console.log(`| ${BUILDINGS[id].name} | ${ts.length} | ${BUILDINGS[id].cost} | ${f1(turns)} | ${f2(netPerTurn)} | ${f2(dmgPerTurn)} | ${f2(theoryHazard(Math.max(0, netPerTurn)))} | ${f1(payoff)} | ${Number.isFinite(payback) ? f1(payback) : 'never'} |`);
+  // Food made is worth what it saves in bought food; residents' food is a cost at the same price.
+  const foodValue = (t) => (t.food - t.turns * BUILDINGS[id].residents * cfg.foodPerResident) * cfg.foodImportPrice;
+  const foodPerTurn = ts.reduce((a, t) => a + foodValue(t), 0) / ts.reduce((a, t) => a + t.turns, 0);
+  const payoff = mean(ts.map((t) => t.net + foodValue(t) - t.cost - t.damage));
+  const perTurn = netPerTurn + foodPerTurn - dmgPerTurn;
+  const payback = perTurn > 0 ? BUILDINGS[id].cost / perTurn : Infinity;
+  console.log(`| ${BUILDINGS[id].name} | ${ts.length} | ${BUILDINGS[id].cost} | ${f1(turns)} | ${f2(netPerTurn)} | ${f2(foodPerTurn)} | ${f2(dmgPerTurn)} | ${f2(theoryHazard(Math.max(0, netPerTurn)))} | ${f1(payoff)} | ${Number.isFinite(payback) ? f1(payback) : 'never'} |`);
 }
 
 // Per bot: how each bot's tiles do with little vs plenty of nature.

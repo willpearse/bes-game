@@ -32,18 +32,24 @@ export class End extends Phaser.Scene {
     text(this, 60, 128, money(f.score), { size: 44, bold: true, color: C.gold });
     const lines = [
       `GDP earned: ${money(f.gdp)}`,
-      `Event damage: −${money(f.eventDamage)}`
+      `   after waste bills ${money(f.wasteBill)} and food bought ${money(f.foodCost)}`,
+      `Event damage: −${money(f.eventDamage)}`,
+      f.housingShortfall > 0
+        ? `✘ Homes ${f.residents}/${f.housingTarget}: −${money(f.housingPenalty)}`
+        : `✔ Homes ${f.residents}/${f.housingTarget}: target met`
     ];
     if (st.config.happinessMode === 'endGame') lines.push(`Happiness multiplier: ×${f.endMultiplier.toFixed(2)}`);
     f.objectives.forEach((o) => lines.push(`${o.met ? '✔' : '✘'} ${o.name}: ${o.met ? `+${money(o.bonus)}` : 'not met'}`));
-    text(this, 60, 190, lines.join('\n'), { size: 15, lineSpacing: 6 });
+    text(this, 60, 190, lines.join('\n'), { size: 14, lineSpacing: 3 });
 
     // Nature's contribution: the central message.
     panel(this, 440, 96, 800, 250, 0x2b3a2b).setStrokeStyle(3, 0x86b04a);
     text(this, 464, 108, "Nature's contribution to your economy", { size: 18, bold: true, color: C.good });
     const pct = Math.round(f.natureShare * 100);
     text(this, 464, 136, money(f.natureContribution), { size: 56, bold: true, color: C.text });
-    text(this, 464, 204, `That is ${pct}% of all the GDP your region earned.`, { size: 20, color: C.text });
+    text(this, 464, 204, pct > 100
+      ? 'More than all the GDP you earned: without it, your region would have lost money.'
+      : `That is ${pct}% of all the GDP your region earned.`, { size: pct > 100 ? 17 : 20, color: C.text });
     text(this, 464, 236,
       'This is what you would have lost if pollinators, green space and clean air,\nand clean water had simply not been there.',
       { size: 14, color: C.dim, lineSpacing: 4 });

@@ -1,5 +1,6 @@
 // Variant settings from the URL, high scores and first-play hints (localStorage).
 import { CONFIG } from '../data/config.js';
+import { MAPS } from '../data/maps/index.js';
 
 const store = {
   get(key, fallback) {
@@ -19,14 +20,14 @@ const store = {
   }
 };
 
-// ?market=menu&waste=simple&happiness=endGame&pressure=1&seed=42
+// ?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42
 export function configFromUrl(search = window.location.search) {
   const q = new URLSearchParams(search);
   const cfg = {};
   if (q.has('market')) cfg.marketMode = q.get('market') === 'menu' ? 'menu' : 'market';
   if (q.has('waste')) cfg.wasteMode = q.get('waste') === 'simple' ? 'simple' : 'tokens';
   if (q.has('happiness')) cfg.happinessMode = q.get('happiness') === 'endGame' ? 'endGame' : 'perTurn';
-  if (q.has('pressure')) cfg.populationPressure = ['1', 'true', 'on'].includes(q.get('pressure'));
+  if (q.has('map') && MAPS[q.get('map')]) cfg.mapId = q.get('map');
   if (q.has('seed')) {
     const s = q.get('seed');
     cfg.seed = /^\d+$/.test(s) ? Number(s) : s;
@@ -36,16 +37,16 @@ export function configFromUrl(search = window.location.search) {
 
 export function variantKey(cfg) {
   const c = { ...CONFIG, ...cfg };
-  return [c.mapId, c.marketMode, c.wasteMode, c.happinessMode, c.populationPressure ? 'pp' : 'nopp'].join('-');
+  return [c.mapId, c.marketMode, c.wasteMode, c.happinessMode].join('-');
 }
 
 export function variantLabel(cfg) {
   const c = { ...CONFIG, ...cfg };
   return [
+    MAPS[c.mapId]?.name ?? c.mapId,
     c.marketMode === 'market' ? 'Market' : 'Menu',
     c.wasteMode === 'tokens' ? 'Flowing waste' : 'Simple waste',
-    c.happinessMode === 'perTurn' ? 'Happiness each turn' : 'Happiness at end',
-    c.populationPressure ? 'Crowding on' : 'Crowding off'
+    c.happinessMode === 'perTurn' ? 'Happiness each turn' : 'Happiness at end'
   ].join(' · ');
 }
 

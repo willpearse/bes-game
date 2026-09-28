@@ -3,13 +3,10 @@ export const CONFIG = {
   mapId: 'estuary',
   turns: 24,
   eventTurns: [8, 16, 24],
-  startingCash: 10,
   marketMode: 'market',        // 'market' | 'menu'
   marketSurcharge: [0, 0, 1, 2, 3, 4],
   wasteMode: 'tokens',         // 'tokens' | 'simple'
   happinessMode: 'perTurn',    // 'perTurn' | 'endGame'
-  populationPressure: true,
-  pressureThresholds: [10, 20, 30, 40],
   serviceCap: 6,
   objectiveBonus: 50,
   seed: null,                  // null = random
@@ -24,16 +21,34 @@ export const CONFIG = {
   riverMaxSteps: 3,
   pollutionPressureThreshold: 10,  // water pollution at which every sea and lake cell gains 1 pressure
   pollutionRecoveryPerSeagrass: 0.5,
+  pollutionDecay: 0.1,        // share of water pollution that disperses each turn (after seagrass)
   happinessGdpFactor: 0.1,
   happinessNeutral: 5,
   noResidentsHappiness: 5,
-  populationPressurePenalty: 0.5,
-  eventDamageMultiplier: 4,
-  eventDamageMinimum: 2,
+  eventDamageMultiplier: 8,   // damage to an unprotected tile = max(minimum, multiplier x its GDP this turn)
+  eventDamageMinimum: 4,
+
+  // Waste bill: nature touching a building soaks up 1 waste per wasteAbsorbDivisor water service it receives;
+  // every token left over costs wasteBillPerToken and flows downhill.
+  wasteAbsorbDivisor: 2,
+  wasteBillPerToken: 1,
+
+  // Food: each resident eats foodPerResident a turn; any shortfall is bought in at foodImportPrice a unit.
+  foodPerResident: 1,
+  foodImportPrice: 1,
+
+  // Housing target (set per map): each resident short of it at the end costs this much.
+  housingPenaltyPerResident: 10,
   eventProtectionThreshold: 3
 };
 
 // Maps pressure to use intensity (section 9, step 3): pressure >= min gives that intensity.
+// Used when a map does not set its own. A config value (tests, URL) still beats the map's.
+export const MAP_DEFAULTS = {
+  startingCash: 10,
+  housingTarget: 16
+};
+
 export const PRESSURE_TO_INTENSITY = [
   { min: 3, intensity: 'intense' },
   { min: 1, intensity: 'light' },

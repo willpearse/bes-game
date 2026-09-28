@@ -51,9 +51,9 @@ Tests: 95 Vitest tests, engine line coverage 98.7% (`npm run coverage`). They co
 ### Wellbeing, GDP and counterfactuals
 
 15. **"Within N" excludes the cell itself everywhere**, including the Holiday park's "waste within 1".
-16. **Happiness and crowding.** Population-pressure penalties apply after rounding H, and H is rounded again afterwards.
+16. **Happiness** is rounded to 1 decimal. (Crowding was removed: see 47.)
 17. **Nature's contribution.** `noNature` and `without[s]` zero the *received services* and recompute income and happiness. Since the simplification (40), every nature bonus to GDP goes through a service, so nothing is left out. Event damage avoided is reported separately and is not part of the counterfactuals.
-18. **endGame happiness mode.** The final multiplier applies to (GDP − event damage), as in the first sentence of section 13. Each counterfactual is multiplied by the happiness it would have had on the final board.
+18. **endGame happiness mode.** The final multiplier applies to income only (not waste bills, food bought or event damage), just as the per-turn multiplier does. Applying it to net GDP amplified losses once costs could exceed income. Each counterfactual uses the happiness it would have had on the final board. `state.cf.income` keeps the income-only running totals for this.
 19. **Event damage** uses the tile's net GDP this turn (income minus upkeep), before the happiness multiplier, with the £2 minimum. Score can go below zero; cash cannot.
 20. **Event protector.** The protector is the cell with the highest supply of the protecting service within that service's radius (ties go to the first cell in row order). Messages are grouped by habitat or building name.
 21. **Event reveal.** The HUD shows the first scheduled event at or after the current turn. This gives exactly "one stage ahead" with the default turns, and still works if `eventTurns` changes.
@@ -71,7 +71,7 @@ Tests: 95 Vitest tests, engine line coverage 98.7% (`npm run coverage`). They co
 27. **Ancient heritage** checks every cell that started Primary. Building on one or restoring it fails the objective.
 27a. **Pick 2 of 4 (designer's change).** The seed draws 4 objectives (`objectiveOffer` in config); the player keeps 2 on the title screen (`config.objectives`). Invalid choices fall back to the first 2 on offer. The offer is drawn last, so choosing does not change the market or events.
 27b. **New objectives and thresholds.** Added: Biodiversity net gain, 30 by 30, Pollinator paradise, Blue carbon, Rewilder, Clean rivers, Nature pays, Coast guard. On the estuary map, several fixed counts would be met on turn 1 (30 meadow/heath, 11 saltmarsh/seagrass, 7 fen/peat cells), so those are measured against the start: Wetland county is now "create 2 new fen or peat bog cells", Pollinator paradise is "no net loss of meadow and heath", Blue carbon is "gain 2 saltmarsh or seagrass". 30 by 30 counts sea cells protected by a reserve (the reserve cell and marine cells within 1). Coast guard needs at least 2 built tiles within 2 of the sea, all receiving FLD ≥ 3. Nature pays uses the running counterfactual totals (before any end-game happiness multiplier).
-27c. **Fixed settings (designer's change).** Flowing waste and crowding (population pressure) are always on. The title screen no longer offers them; `?waste=simple` and `?pressure=0` still work for testing.
+27c. **Fixed settings (designer's change).** Flowing waste is always on. The title screen no longer offers it; `?waste=simple` still works for testing. (Crowding was later removed: see 47.)
 
 ### Art and UI
 
@@ -91,7 +91,7 @@ The designer asked for suggestions 1 to 6 of the first `MECHANICS.md` to be made
 36. **Services reach the four touching squares.** A built tile receives each service from its N, E, S and W squares only (still capped at 6). Radius 1 with diagonals (8 squares) was tried first; the starting cottages still hit the cap for every service, so the four-square rule was chosen. Pressure still counts all 8 squares around a building.
 37. **Three services instead of five.** POL (pollination and pest control) is unchanged. REC and AIR became GRN (green space and clean air). WAT and FLD became WAT (clean water and flood protection). Habitat values were merged by hand, roughly the average of the two old values rounded towards the more important role (for example dunes GRN 2 from REC 3 and AIR 0; saltmarsh and seagrass WAT 3 because they are strong flood and water habitats). Events that used FLD or AIR now use WAT or GRN.
 38. **Cleaning comes from the water service.** A land nature cell cleans waste equal to its WAT supply (habitat WAT × B), rounded down. This replaces the separate `cleans` column, the "−1 at intense use" rule and the riparian list: any land cell with a strong water service cleans the river beside it. Rounding down means only wetlands and woods clean (meadow, heath and moorland clean 0), which keeps the lesson "wetlands clean water" clear. Worn or young habitat cleans less because its B is lower.
-39. **Upkeep.** Every building has an `upkeep` cost taken off its GDP every turn. Income (base plus bonuses minus penalties) still never goes below 0, but net GDP can, so a farm with no pollinators or a fleet in a polluted sea can lose money. The happiness multiplier applies to income only, not upkeep. Cash still never goes below 0. Upkeep values are first guesses: 0 for cottages, 1 for most tiles, 2 for the big earners and the hospital.
+39. **Upkeep** (replaced by the waste bill in 46). Every building has an `upkeep` cost taken off its GDP every turn. Income (base plus bonuses minus penalties) still never goes below 0, but net GDP can, so a farm with no pollinators or a fleet in a polluted sea can lose money. The happiness multiplier applies to income only, not upkeep. Cash still never goes below 0. Upkeep values are first guesses: 0 for cottages, 1 for most tiles, 2 for the big earners and the hospital.
 40. **Special nature bonuses folded into services.** The Fishing fleet now earns +WAT/2 (seagrass has WAT 3) instead of +1 per seagrass within 2. The Holiday park lost its +1 for ancient habitat within 2 (ancient habitat already supplies more GRN, because B is 1.0). Forest schools and the hospital's clean-air boost are gone.
 41. **Simpler wellbeing.** Wellbeing = base (cottages 4, tower block 3) + GRN received (max 6) + school (+1 if one is within 3) + hospital (+2 if one is within 4) − nuisance − waste, clamped to 0 to 10. The low-water penalty is gone.
 42. **One water pollution number.** Waste reaching the sea or a lake adds to `state.pollution` (was `seaPollution`, plus a separate `lakePollution` per lake cell that reduced lake supply and never recovered). At 10 or more, sea and lake cells gain 1 pressure. The Holiday park penalty applies if the sea or a lake is within 2. The Clean seas objective is now "Clean waters" (pollution 2 or less), and Clean rivers no longer checks the lake.
@@ -156,7 +156,7 @@ What stands out, compared with the five-service version:
 | nature | £106 | £70 | 39% | 0.3 | 0 | 87% | 0.7 |
 | balanced | £615 | £601 | 66% | 11.1 | 5.5 | 65% | 0.3 |
 
-`npm run payoff -- --games 300` (full tables in `reports/payoff-2026-09-28.md`) records every building's net GDP each turn (income × happiness multiplier − upkeep) against the number of nature squares touching it (k), and compares it with what the parameters predict (each touching square supplies the map's average habitat at light use). Findings:
+`npm run payoff -- --games 300` (that report has been replaced by the ones for 45 to 52; see git history) records every building's net GDP each turn (income × happiness multiplier − upkeep) against the number of nature squares touching it (k), and compares it with what the parameters predict (each touching square supplies the map's average habitat at light use). Findings:
 
 - **Nature on its own earns almost nothing.** The nature bot keeps the two starting cottages and plants woodland around them (happiness 9.7), but with no other buildings nothing uses the services. Restoring mature habitat also *lowers* intactness during a game (89% to 87%), because young habitat has a lower B than what it replaces.
 - **The balanced bot is greedy in disguise.** It never restores (a well-spaced build that gains GDP is always available) and scores the same as greedy, losing slightly fewer ancient cells. The two-neighbour rule rarely binds.
@@ -165,5 +165,38 @@ What stands out, compared with the five-service version:
 - **Upkeep takes 26 to 30% of income, but rarely changes a decision.** Every building except the holiday park, school, hospital, recycling centre and fleet pays back its cost in about 2 turns or less.
 - **Hazards take about 7% of income.** About 55% of tiles at risk are hit, because protection needs 3 WAT from four touching squares and the average land square supplies 1.2. Observed damage per tile-turn is close to the parameter theory: an exposed, unprotected tile expects to lose 0.75 × 4 × its GDP over a game, about 3 turns of income out of 24. So protecting a factory is worth about £12 a game, while a restoration turn gives up a build worth £20 to £40; the bots are right to ignore protection.
 - Caution: k is confounded with timing. Tiles with few nature neighbours are mostly built late, when happiness is lower, so some differences for nature-independent buildings (such as Cluck Towers) reflect when they were built, not what touches them.
+
+### Food, housing, waste bills and a second map (designer's changes)
+
+45. **Broken numbers fixed.** Water pollution now disperses 10% a turn after seagrass cleaning (`pollutionDecay`); before, it only ever grew and reached about 200, which wiped out fleets and seaside holiday parks. The big earners that ignore nature cost more: factory 5 → 8, business park 4 → 6 (homes bonus max 3 → 2), Cluck Towers 5 → 7, harbour 5 → 7. After a first run, the fishing fleet (cost 4, base 1) and Cluck Towers (base 4, food 3) were trimmed because food made them the best buildings in the game.
+46. **Waste bill replaces upkeep.** Each turn, the nature touching a building soaks up floor(WAT received / 2) of its waste (`wasteAbsorbDivisor`), then touching recycling centres soak up to 3 each. Each token left over costs £1 (`wasteBillPerToken`) and becomes a token that flows downhill as before. Recycling centres use any spare capacity on tokens on their own and touching squares. Because soaking up uses the received WAT, the counterfactuals automatically count waste treatment as part of nature's contribution. There is no other running cost: clean buildings (wind farm, hill farm, conifer, school) cost nothing to run.
+47. **Crowding removed** (designer's decision). The housing target now does the job of limiting or driving growth, and nature near homes already rewards spacing. `?pressure=` is gone.
+48. **Bigger hazards.** Event damage is max(£4, 8 × tile GDP) (was max(£2, 4 × GDP)).
+49. **Food.** Each resident eats 1 food a turn (`foodPerResident`). Family farms make 1 + POL/2, hill farms 1, Cluck Towers 3, fishing fleets 1 + WAT/2. Any shortfall is bought at £1 a unit (`foodImportPrice`) and taken off that turn's GDP. Surplus food is not sold (farms already earn income). `state.food` = { made, need, bought, cost } for the HUD; totals in `stats.foodCost`.
+50. **Housing target.** Each map sets `housingTarget` (estuary 16, Mill valley 30); each resident short at the end costs £10 (`housingPenaltyPerResident`). The Growing community objective was removed as redundant. Maps can also set `startingCash`; defaults live in `MAP_DEFAULTS` (not `CONFIG`, because the title screen passes all of `CONFIG` as the game config, which would override the map).
+51. **Mill valley** (`src/data/maps/millValley.json`, explicit elevation grid). A worn valley with a town of 10 cottages and a tower block, 4 family farms, 2 hill farms (on moorland: `startingBuildings` entries can now be `{ building, habitat }`), Cluck Towers and a factory beside the river. Fewer ancient habitats (start intactness 70% against 89%). Starting cash £15. The title screen has a Map option; the choice is remembered, and high scores are kept per map.
+52. **Bots.** The nature bot now builds only when short of food (a farm or fleet) or of the housing target (a home), on the square with most nature touching it, and otherwise restores. Greedy and balanced build the best home whenever they fall behind the housing target's pace (target × turn / 24); without this, greedy never builds homes (they lose money each turn) and just takes the end penalty. `simulate` reports food bought, waste bills, pollution, residents and housing penalty, and takes `--map`. `payoff` reports waste bills and food value.
+
+#### Balance after 45 to 52
+
+`npm run simulate -- --games 200 --bot all --map ...` (full output and pay-off tables in `reports/`):
+
+| Map | Bot | Score | GDP after damage | Waste bills | Food bought | Event damage | Housing penalty | Ancient lost | Intactness at end |
+|---|---|---|---|---|---|---|---|---|---|
+| Estuary | random | £41 | £102 | £66 | £48 | £30 | £107 | 0.5 | 82% |
+| Estuary | greedy | £608 | £592 | £99 | £9 | £132 | £1 | 5.1 | 69% |
+| Estuary | nature | £421 | £403 | £80 | £14 | £95 | £6 | 2.0 | 71% |
+| Estuary | balanced | £669 | £655 | £118 | £7 | £151 | £0 | 4.1 | 66% |
+| Mill valley | random | −£73 | £16 | £513 | £38 | £181 | £117 | 0.1 | 65% |
+| Mill valley | greedy | £562 | £548 | £435 | £28 | £308 | £2 | 2.2 | 55% |
+| Mill valley | nature | £318 | £308 | £487 | £20 | £225 | £14 | 1.8 | 57% |
+| Mill valley | balanced | £540 | £527 | £508 | £22 | £329 | £1 | 2.4 | 53% |
+
+- **Builders beat the nature-first bot on both maps.** On the estuary the nature-aware builder (balanced) beats greedy by about 10%; on Mill valley it is about 4% behind.
+- **The nature bot's rule is weak, not only the game.** It restores whenever it is fed and housed, but a restoration adds little GDP within 24 turns, while nature-dependent buildings (family farm, fleet, holiday park) earn a lot. So "use nature well" wins, and "restore nature" alone does not.
+- **Food producers have the best pay-offs** (estuary: family farm about £105 a tile over its life, fleet £89, hill farm £54, Cluck Towers £50). The top two depend on nature, which is the intended lesson. Homes lose money on their own (their residents eat), so the housing target is what makes players build them.
+- **Mill valley is harsh and restoration cannot fix it.** Waste bills take 33 to 47% of income, about 75% of tiles at risk are hit in events, happiness sits near 4 and water pollution reaches about 150, which wipes out fishing fleets. The dense town leaves no squares next to homes to restore, so the map's lesson ("repairing worn nature pays") does not come through yet.
+- **Events now matter**: 16% of income on the estuary and about 24% on Mill valley. Offshore wind farms and harbours on Mill valley lose money overall, because storm surges hit them and nothing at sea can protect them unless seagrass is next door.
+- The recycling centre shows as "never pays back" in the pay-off tables because its savings appear in other buildings' waste bills, which the table does not credit to it.
 
 Open questions and future work are in `TODO.md`.

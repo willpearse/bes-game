@@ -21,10 +21,6 @@ export const OBJECTIVES = {
     name: 'Thriving wildlife', text: 'Biodiversity intactness 70% or more', kind: 'intactnessMin', value: 0.7,
     why: 'Intact nature keeps delivering services for the long term.'
   },
-  growingCommunity: {
-    name: 'Growing community', text: 'At least 12 residents', kind: 'residentsMin', value: 12,
-    why: 'A region needs homes as well as habitats.'
-  },
   weatheredIt: {
     name: 'Weathered it', text: 'No tiles hit by any event', kind: 'noEventHits',
     why: 'Nature-based defences protect homes and businesses from extreme weather.'
