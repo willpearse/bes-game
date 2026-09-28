@@ -17,7 +17,7 @@ import { BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.j
 
 const args = parseArgs(process.argv.slice(2));
 const games = Number(args.games ?? 100);
-const bots = botList(args.bot, ['random', 'greedy', 'nature', 'balanced']);
+const bots = botList(args.bot, ['random', 'greedy', 'nature', 'balanced', 'repair']);
 const firstSeed = Number(args.seed ?? 1);
 const config = variantConfig(args);
 const cfg = { ...CONFIG, ...config };

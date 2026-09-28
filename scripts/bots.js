@@ -3,7 +3,7 @@
 import { createGame } from '../src/engine/state.js';
 import { takeTurn, legalTargets, preview, choiceCost, choiceBuilding } from '../src/engine/actions.js';
 import { menuUnlocked } from '../src/engine/market.js';
-import { cellAt, ortho, isNature } from '../src/engine/grid.js';
+import { cellAt, ortho, isNature, isBuilt } from '../src/engine/grid.js';
 import { mulberry32 } from '../src/engine/rng.js';
 import { RESTORATION_KEYS } from '../src/data/restorations.js';
 import { BUILDINGS } from '../src/data/buildings.js';
@@ -12,7 +12,8 @@ export const BOT_RULES = {
   random: 'Picks pass, build or restore at random, then a random legal choice and square.',
   greedy: "Takes the build or restoration with the best gain in this turn's GDP per pound spent (but builds the best home when behind the housing target's pace); passes if nothing gains.",
   nature: 'Builds only when short of food (a farm or fleet) or of the housing target (a home), on the square with most nature touching it; otherwise makes the restoration that would add most GDP once grown, then most happiness, then most biodiversity.',
-  balanced: 'Builds like greedy (including keeping pace with the housing target), but only off ancient habitat and where the new tile keeps at least two nature squares touching it; otherwise restores like the nature bot.'
+  balanced: 'Builds like greedy (including keeping pace with the housing target), but only off ancient habitat and where the new tile keeps at least two nature squares touching it; otherwise restores like the nature bot.',
+  repair: 'Feeds and houses people first (the best farm or fleet when short of food, then the best home when behind the housing target\'s pace); then, if restoring bare ground next to a building would add GDP once grown, makes the best such restoration; otherwise plays like the balanced bot.'
 };
 
 // All choices (without a target) available this turn.
@@ -124,6 +125,24 @@ export const BOTS = {
     const acts = actionsFor(state);
     const build = greedyPick(state, acts.build.filter((a) => wellSpaced(state, a)), []);
     return build ?? bestRestoration(state, acts.restore) ?? { type: 'pass' };
+  },
+  repair(state) {
+    const acts = actionsFor(state);
+    const spaced = acts.build.filter((a) => wellSpaced(state, a));
+    if (state.food && state.food.made < state.food.need) {
+      const food = best(spaced.filter((a) => BUILDINGS[choiceBuilding(state, a)].food), (a) => perPound(state, a), -Infinity);
+      if (food) return food;
+    }
+    if (behindOnHomes(state)) {
+      const home = best(spaced.filter((a) => isHome(state, a)), (a) => perPound(state, a), -Infinity);
+      if (home) return home;
+    }
+    const nextToBuilding = (a) => {
+      const cell = cellAt(state, a.row, a.col);
+      return cell.habitat === 'bare' && ortho(state, a.row, a.col).some(isBuilt);
+    };
+    const fix = best(acts.restore.filter(nextToBuilding), (a) => preview(state, a, a.row, a.col, { grown: true }).gdpDelta);
+    return fix ?? BOTS.balanced(state);
   }
 };
 

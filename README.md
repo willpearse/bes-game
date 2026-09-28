@@ -10,7 +10,7 @@ npm run dev        # http://localhost:8080
 npm test           # engine tests (Vitest)
 npm run coverage   # engine line coverage
 npm run build      # static build in dist/
-npm run simulate -- --games 500 --bot all   # random, greedy, nature, balanced
+npm run simulate -- --games 500 --bot all   # random, greedy, nature, balanced, repair
 npm run payoff -- --games 300               # building pay-off with and without nature, vs theory
 ```
 
@@ -55,7 +55,7 @@ The title screen offers the map (River estuary or Mill valley), the tile mode (m
 - `src/data/`: every tunable number and table (flat, data-only files).
 - `src/art/`: the palette and 32×32 sprites as palette-index strings (drawn by `scripts/draw-sprites.js`).
 - `src/scenes/`: Phaser scenes (Boot, Title, Game, UI, End).
-- `scripts/bots.js`: the simulation bots (random, greedy, nature, balanced), each a one-sentence rule.
+- `scripts/bots.js`: the simulation bots (random, greedy, nature, balanced, repair), each a one-sentence rule.
 - `scripts/simulate.js`: headless balance simulation.
 - `scripts/payoff.js`: how much each kind of building earns with and without nature touching it, against what the parameters predict.
 

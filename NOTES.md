@@ -231,4 +231,25 @@ What stands out, compared with the five-service version:
 - **Wrecked tiles** are about 1 to 2 a game: visible but not crippling.
 - **Sea:** wind farms now pay back in about a turn and are never hit; fleets do well on the estuary (pay-off about £87) but poorly on polluted Mill valley (about £39).
 
+### A repair bot
+
+61. **Repair bot** (`scripts/bots.js`): feeds and houses people first (the best farm or fleet when short of food, then the best home when behind the housing target's pace); then, if restoring bare ground next to a building would add GDP once grown, it makes the best such restoration; otherwise it plays like the balanced bot. 200 games per map (gold score now the map values, 660 and 440):
+
+| Map | Bot | Score | Waste bills | Restorations a game | Medal rate |
+|---|---|---|---|---|---|
+| Estuary | greedy | £659 | £81 | 2.8 | 33% |
+| Estuary | balanced | £695 | £122 | 0.0 | 53% |
+| Estuary | repair | £685 | £117 | 0.5 | 65% |
+| Mill valley | greedy | £438 | £599 | 7.9 | 4% |
+| Mill valley | balanced | £270 | £764 | 2.0 | 9% |
+| Mill valley | repair | £293 | £604 | 8.8 | 10% |
+
+(Greedy and balanced rows are from NOTES 53 to 60; restorations a game are from 20-game counts.)
+
+- **Repairing pays on Mill valley, and greedy already does it.** In market mode a restoration costs £0 (the discarded card), so greedy's "GDP gain per pound" picks a restoration whenever it adds anything. On Mill valley it restores about 8 times a game, 6 of them in the first half, against about 3 on the estuary. The highest-scoring play on the worn map is therefore a mix of repair and building, chosen turn by turn by value.
+- **Repair beats balanced on Mill valley** (£293 against £270), with a waste bill 21% lower, but trails greedy, which picks *which* squares to restore (and when to build instead) by value rather than by a rule.
+- **Over-repairing costs.** A variant that restored any nature square next to a building (not only bare ground) made about 15 restorations a game on Mill valley and scored £197: the turns spent restoring were worth more as builds.
+- **On the estuary** there is little bare ground, so repair plays almost like balanced (£685) but earns a medal most often (65%), because it puts food first.
+- **Food runs out in stage C for every bot.** The stage C market pile has no family farms, hill farms or fishing fleets and only one Cluck Towers, while tower blocks keep coming. That, not bot behaviour, is the main reason "fed on the last turn" (and so bronze) fails so often. See TODO.
+
 Open questions and future work are in `TODO.md`.

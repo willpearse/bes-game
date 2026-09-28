@@ -26,7 +26,7 @@ npm run dev          # Vite dev server, http://localhost:8080
 npm test             # Vitest engine tests (tests/*.test.js)
 npm run coverage     # engine line coverage (target > 90%)
 npm run build        # static build into dist/ (relative base, works on GitHub Pages)
-npm run simulate -- --games 500 --bot all      # headless balance run (random | greedy | nature | balanced | both | all)
+npm run simulate -- --games 500 --bot all      # headless balance run (random | greedy | nature | balanced | repair | both | all)
 npm run payoff -- --games 300                  # building pay-off by touching nature, observed vs theory
 node scripts/draw-sprites.js                   # regenerate src/art/sprites.js
 ```

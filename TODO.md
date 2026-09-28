@@ -16,7 +16,7 @@ Ideas and open questions for later sessions. Newest designer requests first.
 
 - **Mill valley: waste bills dominate and greedy still scores highest.** Bills take more than half of income; cottages, Cluck Towers and the factory barely break even. The nature bot earns bronze most often but scores lowest. A bot that restores the bare ground around the town first would show whether repairing the valley can beat building; if not, consider more bare ground next to the factory and homes, or a slightly lower starting waste.
 - **Silver and gold are rare** because both objectives are seldom met (2 to 16% of bot games). Check which objectives are near impossible on each map with the simulator.
-- **"Fed at the end" catches out builders** who add homes late. Decide whether bronze should check food over the last few turns rather than only the final one.
+- **Food buildings vanish from the market in stage C** (NOTES 61): the stage C pile has no family farms, hill farms or fishing fleets and one Cluck Towers, while tower blocks keep coming. This is the main reason "fed at the end" (and so bronze) fails. Add food buildings to the stage C pile, or make bronze check food over the last few turns rather than only the final one.
 - The bots only look one turn ahead; a planning bot would show whether early restoration pays back.
 - Restoring mature habitat lowers intactness until it matures (young B 0.6), which works against Biodiversity net gain and Thriving wildlife. Decide whether that is the intended lesson.
 
