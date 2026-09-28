@@ -44,7 +44,8 @@ export class End extends Phaser.Scene {
     text(this, 250, 142, next, { size: 11, color: C.dim, wrap: 160 });
     const lines = [
       `GDP earned: ${money(f.gdp)}`,
-      `   after waste bills ${money(f.wasteBill)}, fertiliser ${money(f.fertiliser)}, food ${money(f.foodCost)}`,
+      `   after waste bills ${money(f.wasteBill)}, fertiliser ${money(f.fertiliser)}, food ${money(f.foodCost)}` +
+        (f.upkeep ? `, running costs ${money(f.upkeep)}` : ''),
       `Event damage: −${money(f.eventDamage)}${f.destroyed ? ` (${f.destroyed} tile${f.destroyed === 1 ? '' : 's'} wrecked)` : ''}`,
       f.housingShortfall > 0
         ? `✘ Homes ${f.residents}/${f.housingTarget}: −${money(f.housingPenalty)}`

@@ -20,7 +20,7 @@ const store = {
   }
 };
 
-// ?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42
+// ?map=millValley&difficulty=teacher&market=menu&waste=simple&happiness=endGame&seed=42
 export function configFromUrl(search = window.location.search) {
   const q = new URLSearchParams(search);
   const cfg = {};
@@ -28,6 +28,7 @@ export function configFromUrl(search = window.location.search) {
   if (q.has('waste')) cfg.wasteMode = q.get('waste') === 'simple' ? 'simple' : 'tokens';
   if (q.has('happiness')) cfg.happinessMode = q.get('happiness') === 'endGame' ? 'endGame' : 'perTurn';
   if (q.has('map') && MAPS[q.get('map')]) cfg.mapId = q.get('map');
+  if (q.has('difficulty')) cfg.difficulty = q.get('difficulty') === 'teacher' ? 'teacher' : 'student';
   if (q.has('seed')) {
     const s = q.get('seed');
     cfg.seed = /^\d+$/.test(s) ? Number(s) : s;
@@ -42,13 +43,14 @@ export const COMMIT = typeof __COMMIT__ !== 'undefined' ? __COMMIT__ : 'dev';
 
 export function variantKey(cfg) {
   const c = { ...CONFIG, ...cfg };
-  return [COMMIT, c.mapId, c.marketMode, c.wasteMode, c.happinessMode].join('-');
+  return [COMMIT, c.mapId, c.difficulty, c.marketMode, c.wasteMode, c.happinessMode].join('-');
 }
 
 export function variantLabel(cfg) {
   const c = { ...CONFIG, ...cfg };
   return [
     MAPS[c.mapId]?.name ?? c.mapId,
+    c.difficulty === 'teacher' ? 'Teacher' : 'Student',
     c.marketMode === 'market' ? 'Market' : 'Menu',
     c.wasteMode === 'tokens' ? 'Flowing waste' : 'Simple waste',
     c.happinessMode === 'perTurn' ? 'Happiness each turn' : 'Happiness at end',

@@ -14,7 +14,7 @@ import { upcomingEvent } from '../engine/events.js';
 import { intactness } from '../engine/intensity.js';
 import { evaluateObjectives } from '../engine/objectives.js';
 import { menuUnlocked, surcharge } from '../engine/market.js';
-import { wasteTokensAt, wasteBillRate } from '../engine/waste.js';
+import { wasteTokensAt, wasteBillRate, residentsUpstream, cleanCapacity } from '../engine/waste.js';
 import { tileFood } from '../engine/gdp.js';
 import { cellAt } from '../engine/grid.js';
 import { isFirstGame, hintsSeen, markHintSeen } from '../ui/prefs.js';
@@ -22,7 +22,7 @@ import { isFirstGame, hintsSeen, markHintSeen } from '../ui/prefs.js';
 const HINTS = {
   place: 'Pick a tile from the market, then click a gold square on the map to build it.',
   overlays: 'Try the buttons along the bottom: they show where each of nature\'s services comes from.',
-  waste: 'Waste flows downhill into rivers, lakes and the sea. Wetlands with a strong water service (fen, peat, saltmarsh) clean it up, including the river beside them.',
+  waste: 'Waste flows downhill into rivers, lakes and the sea. Nature by the river cleans it as it passes (wetlands best). Beavers or a sewage works can clean the river itself.',
   restore: 'Restoring nature is a valid turn. Switch to Restore, pick an action, and click a square.',
   food: 'Every resident eats 1 food a turn. Farms and fishing fleets make it; anything short is bought in, which costs you.'
 };
@@ -293,14 +293,15 @@ export class UI extends Phaser.Scene {
     this.restoreBtn = button(this, RIGHT_X + 106, y, 100, 32, 'Restore', () => { if (!s.busy) s.setMode('restore'); }, { bold: true });
     this.passBtn = button(this, RIGHT_X + RIGHT_W - 130, y, 130, 32, 'Pass turn (P)', () => s.pass(), { fill: 0x3a3a4c });
     this.modeHint = text(this, RIGHT_X + 220, y + 8, '', { size: 13, color: C.dim });
+    const step = Math.floor(RIGHT_W / RESTORATION_KEYS.length);
     this.restBtns = RESTORATION_KEYS.map((id, i) => {
       const r = RESTORATIONS[id];
-      const b = button(this, RIGHT_X + i * 140, y + 38, 134, 36, r.short, () => { if (!s.busy) s.selectRestoration(id); }, {
-        size: 13, bold: true,
+      const b = button(this, RIGHT_X + i * step, y + 38, step - 5, 36, r.short, () => { if (!s.busy) s.selectRestoration(id); }, {
+        size: 12, bold: true,
         onHover: (on) => (on ? this.showTip(`${r.name}\n${r.tip}\nWorks on: ${this.restoreTargetsText(id)}`) : this.hideTip())
       });
       b.add(this.add.image(20, 18, r.icon).setScale(0.875));
-      b.label.setX(78);
+      b.label.setX(22 + (step - 5) / 2);
       b.restoration = id;
       return b;
     });
@@ -424,6 +425,11 @@ export class UI extends Phaser.Scene {
       lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
       const made = b.food ? `.  Food: ${tileFood(cell)}` : '';
       lines.push(`GDP last turn: £${cell.gdp} after its waste bill${made}${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
+      if (b.sewage) {
+        const up = residentsUpstream(st, cell);
+        lines.push(`Tank: ${cell.tank} waste waiting. Treats ${st.config.sewageTreatPerTurn} a turn.`);
+        lines.push(`Residents draining through it: ${up} (it overflows above ${st.config.sewageResidentsMax}, and in a river flood).`);
+      }
       if (cell.soil != null) {
         const cost = (st.config.soilMax - cell.soil) * st.config.fertiliserPerPoint;
         lines.push(`Soil ${cell.soil}/${st.config.soilMax}${cost ? `: fertiliser costs £${cost} a turn` : ': healthy'}. Water-holding nature touching it keeps soil healthy.`);
@@ -436,6 +442,7 @@ export class UI extends Phaser.Scene {
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
       lines.push(`Pressure ${cell.pressure}.  Waste here: ${wasteTokensAt(st, cell)}.  Height ${cell.elevation}`);
       if (cell.habitat === 'bare') lines.push('Bare ground: compacted and worn out. Restore it, or build on it.');
+      if (cell.dam) lines.push(`Beaver dam: holds back waste and floods, and cleans up to ${cleanCapacity(cell, st)} waste a turn here and just beside it.`);
       if (cell.restored) lines.push(`Restored ${cell.age} turn${cell.age === 1 ? '' : 's'} ago.`);
       if (cell.landUse === 'primary') lines.push('Ancient habitat: if it is built on or worn out, it can never come back.');
       this.setServices('Services it supplies to tiles nearby:', cell.supply);
@@ -568,6 +575,9 @@ export class UI extends Phaser.Scene {
       if (l.type === 'build' && log.length) this.showHint('overlays');
     }
     const w = log.find((l) => l.type === 'waste');
+    for (const o of w?.overflows ?? []) {
+      this.toast(`Storm overflow! Too many homes drain into your sewage works: ${o.count} waste poured into the river.`, C.bad);
+    }
     if (st.turn >= 2 && st.food?.bought > 0) this.showHint('food');
     if (st.turn >= 3 && w && w.produced > 0) this.showHint('waste');
     if (st.turn >= 5) this.showHint('restore');
@@ -614,6 +624,10 @@ export class UI extends Phaser.Scene {
         const names = {};
         ev.hit.forEach((h) => { names[h.name] = (names[h.name] ?? 0) + 1; });
         lines.push('Hit: ' + Object.entries(names).map(([n, c]) => `${n}${c > 1 ? ` x${c}` : ''}`).join(', '));
+      }
+      if (ev.overflows?.length) {
+        const n = ev.overflows.reduce((t, o) => t + o.count, 0);
+        lines.push(`Storm overflow: floodwater filled the sewers, and your sewage works poured ${n} waste into the river.`);
       }
       if (ev.destroyed?.length) {
         const n = ev.destroyed.length;

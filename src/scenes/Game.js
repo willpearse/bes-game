@@ -46,6 +46,7 @@ export class Game extends Phaser.Scene {
         building: this.add.image(x, y, 'px').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(1).setVisible(false),
         primary: this.add.image(x, y, 'primaryMark').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(2).setVisible(false),
         reserve: this.add.image(x, y, 'reserveMark').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(2).setVisible(false),
+        dam: this.add.image(x, y, 'damMark').setOrigin(0).setScale(TILE / SPRITE_SIZE).setDepth(1).setVisible(false),
         tint: this.add.rectangle(x, y, TILE, TILE, 0x000000, 0).setOrigin(0).setDepth(3),
         waste: this.add.image(x - 2, y + TILE - 30, 'waste').setOrigin(0).setScale(1).setDepth(4).setVisible(false),
         wasteText: text(this, x + 30, y + TILE - 20, '', { size: 12, bold: true }).setDepth(4),
@@ -133,6 +134,7 @@ export class Game extends Phaser.Scene {
       if (built) v.building.setTexture(`bld_${cell.building}`);
       v.primary.setVisible(!built && cell.landUse === 'primary');
       v.reserve.setVisible(cell.reserve);
+      v.dam.setVisible(!built && cell.dam);
 
       // Overlay tint.
       let alpha = 0;
@@ -154,8 +156,8 @@ export class Game extends Phaser.Scene {
       }
       v.tint.setFillStyle(colour, alpha);
 
-      // Waste tokens.
-      const tokens = wasteTokensAt(st, cell);
+      // Waste tokens (for a sewage works, what is waiting in its tank).
+      const tokens = wasteTokensAt(st, cell) + (cell.tank ?? 0);
       const showWaste = tokens > 0 && (st.config.wasteMode === 'tokens' || ov === 'WASTE');
       v.waste.setVisible(showWaste && !this.animatingWaste);
       v.wasteText.setText(showWaste && !this.animatingWaste && tokens > 1 ? `${tokens}` : '');
