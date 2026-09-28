@@ -1,6 +1,7 @@
 // Global constants and variant flags. Every tunable number lives in src/data/.
 export const CONFIG = {
   mapId: 'estuary',
+  difficulty: 'student',      // 'student' | 'teacher' (see DIFFICULTIES)
   turns: 24,
   eventTurns: [8, 16, 24],
   marketMode: 'market',        // 'market' | 'menu'
@@ -35,6 +36,11 @@ export const CONFIG = {
   // A land nature square cleans waste on itself and the river beside it: its water service supply plus this, rounded
   // down, in tokens a turn (0.5 = round to the nearest, so meadow and heath clean 1).
   cleanRounding: 0.5,
+  // Sewage works: waste reaching one waits in its tank; it treats up to sewageTreatPerTurn tokens a turn. Storm
+  // overflows: if more than sewageResidentsMax residents drain through it, or in a river flood, the whole tank is
+  // released into the river.
+  sewageTreatPerTurn: 6,
+  sewageResidentsMax: 16,
   wasteBillPerToken: 1,
   // Chronic pollution makes clean-up dearer: +£1 a token per wasteBillPollutionStep of water pollution, up to wasteBillMax.
   wasteBillPollutionStep: 40,
@@ -57,6 +63,10 @@ export const CONFIG = {
 
 // Maps pressure to use intensity (section 9, step 3): pressure >= min gives that intensity.
 // Used when a map does not set its own. A config value (tests, URL) still beats the map's.
+// Difficulty levels. A map's startingCash, housingTarget and goldScore can each be a number or
+// { student, teacher }. Student asks for about half as many new residents as Teacher.
+export const DIFFICULTIES = ['student', 'teacher'];
+
 export const MAP_DEFAULTS = {
   startingCash: 10,
   housingTarget: 16,

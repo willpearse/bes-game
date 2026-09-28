@@ -10,7 +10,7 @@ import { updateMarket, discardEarlierPiles, menuUnlocked, stageForTurn, surcharg
 import { updateIntensity, applyPrimaryLoss, applySuccession, intactness, updateSoil } from './intensity.js';
 import { computeSupply, computeReceived, emptyServices, topContributor } from './services.js';
 import { computeHappiness, happiness } from './happiness.js';
-import { projectGdp, counterfactualGdp, happinessMultiplier, fertiliser } from './gdp.js';
+import { projectGdp, counterfactualGdp, happinessMultiplier, fertiliser, upkeep } from './gdp.js';
 import { resolveWaste } from './waste.js';
 import { resolveEvent } from './events.js';
 import { evaluateObjectives } from './objectives.js';
@@ -108,6 +108,7 @@ export function canPlaceBuilding(state, buildingId, cell) {
     case 'landAnywhere': return isBuildableLand(cell);
     case 'moorOrHeath': return isNature(cell) && (cell.habitat === 'moorland' || cell.habitat === 'heath');
     case 'seaAnywhere': return isOpenSea(cell);
+    case 'river': return isNature(cell) && cell.habitat === 'river' && !cell.dam;
     case 'seaNextToBuiltLand':
       return isOpenSea(cell) && ortho(state, cell.row, cell.col).some((n) => isBuiltNeighbour(n) && isLand(n));
     default: throw new Error(`Unknown placement ${b.placement}`);
@@ -121,6 +122,7 @@ export function canRestore(state, restorationId, cell) {
   else ok = r.buildings.includes(cell.building);
   if (!ok) return false;
   if (r.reserve && cell.reserve) return false;
+  if (r.dam && cell.dam) return false;
   if (r.nextToWater) {
     ok = ortho(state, cell.row, cell.col).some((n) => isNature(n) && (n.habitat === 'river' || n.habitat === 'lake'));
   }
@@ -158,6 +160,8 @@ function applyChoice(state, choice, row, col, log) {
     if (r.reserve) {
       cell.reserve = true;
       if (cell.habitat === 'openSea') cell.reserveAge = 0;
+    } else if (r.dam) {
+      cell.dam = true;
     } else {
       const demolished = isBuilt(cell) ? cell.building : null;
       cell.kind = 'nature';
@@ -182,7 +186,8 @@ function applyChoice(state, choice, row, col, log) {
 export function primaryWarning(state, choice, cell) {
   if (!isNature(cell) || cell.landUse !== 'primary') return null;
   if (choice.type === 'build') return 'This is ancient habitat. Once built on, it cannot be restored.';
-  if (choice.type === 'restore' && !RESTORATIONS[choice.restoration].reserve) {
+  const r = choice.type === 'restore' ? RESTORATIONS[choice.restoration] : null;
+  if (r && !r.reserve && !r.dam) {
     return 'This is ancient habitat. Changing it means it can never be ancient again.';
   }
   return null;
@@ -207,7 +212,7 @@ function baseline(state) {
 
 // Restored habitat as it will be once grown: mature secondary, and seagrass on an open-sea reserve.
 function grow(cell, choice) {
-  if (choice.type !== 'restore') return;
+  if (choice.type !== 'restore' || RESTORATIONS[choice.restoration].dam) return;
   if (RESTORATIONS[choice.restoration].reserve) {
     if (cell.habitat === 'openSea') Object.assign(cell, { habitat: 'seagrass', reserveAge: null, restored: true });
     else return;
@@ -315,8 +320,10 @@ export function takeTurn(state, action) {
   s.food = proj.food;
   s.stats.foodCost = round1((s.stats.foodCost ?? 0) + proj.food.cost);
   const fert = s.cells.reduce((t, cell) => t + (isBuilt(cell) ? fertiliser(s, cell) : 0), 0);
+  const running = s.cells.reduce((t, cell) => t + (isBuilt(cell) ? upkeep(cell) : 0), 0);
   s.stats.fertiliser = round1((s.stats.fertiliser ?? 0) + fert);
-  s.stats.wasteBill = round1((s.stats.wasteBill ?? 0) + proj.bill - fert);
+  s.stats.upkeep = round1((s.stats.upkeep ?? 0) + running);
+  s.stats.wasteBill = round1((s.stats.wasteBill ?? 0) + proj.bill - fert - running);
   s.cash = round1(Math.max(0, s.cash + proj.total));
   s.score = round1(s.score + proj.total);
   s.gdpEarned = round1(s.gdpEarned + proj.total);
@@ -417,6 +424,7 @@ export function endGame(s, log) {
     foodCost: s.stats.foodCost ?? 0,
     wasteBill: s.stats.wasteBill ?? 0,
     fertiliser: s.stats.fertiliser ?? 0,
+    upkeep: s.stats.upkeep ?? 0,
     destroyed: s.stats.destroyed ?? 0,
     medal,
     medalChecks: checks,

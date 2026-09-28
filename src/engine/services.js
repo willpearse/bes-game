@@ -3,6 +3,7 @@ import { CONFIG } from '../data/config.js';
 import { SERVICE_KEYS } from '../data/services.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS, BUILDING_SERVICES } from '../data/buildings.js';
+import { RESTORATIONS } from '../data/restorations.js';
 import { ortho, isBuilt } from './grid.js';
 import { cellB } from './intensity.js';
 
@@ -19,7 +20,10 @@ export function emptyServices() {
 
 export function baseServices(cell) {
   if (isBuilt(cell)) return BUILDING_SERVICES[cell.building] ?? null;
-  return HABITATS[cell.habitat].services;
+  const h = HABITATS[cell.habitat].services;
+  if (!cell.dam) return h;
+  const add = RESTORATIONS.beaverDam.addsServices;
+  return Object.fromEntries(SERVICE_KEYS.map((k) => [k, h[k] + (add[k] ?? 0)]));
 }
 
 export function cellSupply(cell) {
