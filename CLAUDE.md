@@ -5,6 +5,7 @@ Guide for future sessions working on **Green and Pleasant**: a single-player, br
 ## Read first
 
 - `NOTES.md`: what was built, every rule interpretation (numbered), designer changes, balance results. Add to it when you interpret or change a rule.
+- `MECHANICS.md`: one-page summary of how buildings, habitats, services and harms reach the score, with balance findings.
 - `TODO.md`: designer requests for later, balance issues, open questions. Add new open questions here, not in NOTES.
 - `README.md`: how to run, variants, controls, deploying.
 
