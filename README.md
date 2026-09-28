@@ -24,14 +24,16 @@ Each game lasts 24 turns. Your score is the GDP you earned (after waste bills, f
 - **Gold**: silver, and a score above the map's gold score (about what a build-everything bot averages).
 - **Platinum**: a gold that beats your own best score on this device.
 
-High scores are kept in the browser's local storage for each map, each setting and each build (commit), so scores from older rules never count.
+Each map has two levels. **Student** (the default) asks for about half as many new residents as **Teacher**: River estuary 9 residents (Teacher 16), Mill valley 19 (Teacher 24). Fewer residents also means fewer mouths to feed.
+
+High scores are kept in the browser's local storage for each map, level, setting and build (commit), so scores from older rules never count.
 
 ## Variants
 
-The title screen offers the map (River estuary or Mill valley), the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste is always on in normal play, but every variant can still be switched by URL query for testing:
+The title screen offers the map (River estuary or Mill valley), the level (Student or Teacher), the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste is always on in normal play, but every variant can still be switched by URL query for testing:
 
 ```
-?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42
+?map=millValley&difficulty=teacher&market=menu&waste=simple&happiness=endGame&seed=42
 ```
 
 | Query | Values | Meaning |
@@ -40,6 +42,7 @@ The title screen offers the map (River estuary or Mill valley), the tile mode (m
 | `waste` | `tokens` (default), `simple` | Waste tokens flow downhill, or only affect neighbours |
 | `happiness` | `perTurn` (default), `endGame` | When happiness multiplies GDP |
 | `map` | `estuary` (default), `millValley` | Which map to play |
+| `difficulty` | `student` (default), `teacher` | Which level: the housing target and gold score |
 | `seed` | number | Replay a particular game |
 
 ## Controls

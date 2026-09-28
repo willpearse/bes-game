@@ -422,19 +422,19 @@ export class UI extends Phaser.Scene {
       this.inspTitle.setText(`${b.name} (${b.role})`);
       this.inspSprite.setTexture(`bld_${cell.building}`).setVisible(true);
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
-      lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
+      if (!b.sewage) lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
       const made = b.food ? `.  Food: ${tileFood(cell)}` : '';
       lines.push(`GDP last turn: £${cell.gdp} after its waste bill${made}${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
       if (b.sewage) {
         const up = residentsUpstream(st, cell);
         lines.push(`Tank: ${cell.tank} waste waiting. Treats ${st.config.sewageTreatPerTurn} a turn.`);
-        lines.push(`Residents draining through it: ${up} (it overflows above ${st.config.sewageResidentsMax}, and in a river flood).`);
+        lines.push(`Residents draining here: ${up} of ${st.config.sewageResidentsMax}. Any more, or a river flood, and it overflows.`);
       }
       if (cell.soil != null) {
         const cost = (st.config.soilMax - cell.soil) * st.config.fertiliserPerPoint;
         lines.push(`Soil ${cell.soil}/${st.config.soilMax}${cost ? `: fertiliser costs £${cost} a turn` : ': healthy'}. Water-holding nature touching it keeps soil healthy.`);
       }
-      lines.push(b.tip);
+      if (!b.sewage) lines.push(b.tip);
       this.setServices('Services received from nearby nature:', cell.received);
     } else {
       this.inspTitle.setText(`${habitatName(cell.habitat)}${cell.landUse === 'primary' ? ' (ancient)' : ''}${cell.reserve ? ' (marine reserve)' : ''}`);

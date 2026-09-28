@@ -84,7 +84,7 @@ function nextToBuilt(state, cell) {
     const n = cellAt(state, cell.row + dr, cell.col + dc);
     if (!n) continue;
     if (isBuiltNeighbour(n)) return true;
-    if (isNature(n) && n.habitat === 'river') {
+    if (n.habitat === 'river') { // a sewage works on the river does not stop the crossing
       const far = cellAt(state, cell.row + 2 * dr, cell.col + 2 * dc);
       if (far && isBuiltNeighbour(far) && isLand(far)) return true;
     }

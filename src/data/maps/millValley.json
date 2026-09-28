@@ -31,5 +31,5 @@
     [9, 7, 0, 0, 1, 0, 0, 0, 9, 11],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   ],
-  "goldScore": { "student": 440, "teacher": 440 }
+  "goldScore": { "student": 810, "teacher": 790 }
 }

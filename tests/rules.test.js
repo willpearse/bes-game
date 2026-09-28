@@ -452,6 +452,12 @@ describe('crossing rivers', () => {
     const d = tinyGame(['gr', 'r#']);
     expect(legalTargets(d, { type: 'build', building: 'cottages' })).toHaveLength(0);
   });
+  it('still crosses a river square with a sewage works on it', () => {
+    const s = tinyGame(['ggg', 'rrr', 'g#g']);
+    placeBuilding(at(s, 1, 1), 'sewageWorks');
+    const keys = legalTargets(s, { type: 'build', building: 'cottages' }).map((t) => `${t.row},${t.col}`).sort();
+    expect(keys).toEqual(['0,1', '2,0', '2,2']); // the works itself does not let the town grow beside it
+  });
   it('does not bridge from fishing fleets or wind farms', () => {
     const s = tinyGame(['grF'], { buildings: { F: 'fishingFleet' } });
     expect(legalTargets(s, { type: 'build', building: 'cottages' })).toHaveLength(0);
