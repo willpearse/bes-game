@@ -1,4 +1,5 @@
 // Built tiles (section 6).
+// uses: services that change the tile's GDP or its residents' wellbeing (animated as deliveries).
 // placement: landNextToBuilt | moorOrHeath | landAnywhere | seaNextToBuiltLand | seaAnywhere
 // gdp: interpreted by engine/gdp.js. Keys:
 //   base, serviceBonus {service, divisor}, nearbyResidential {radius, max},
@@ -8,19 +9,19 @@ export const BUILDINGS = {
   cottages: {
     name: 'Cottages', role: 'homes', landUse: 'urban', intensity: 'light', cost: 2,
     gdp: { base: 1 }, waste: 1, residents: 1, wellbeingBase: 5, pressure: 1,
-    placement: 'landNextToBuilt', tags: ['residential'],
+    placement: 'landNextToBuilt', tags: ['residential'], uses: ['REC', 'AIR', 'WAT'],
     tip: 'Cosy homes. Happy residents make the whole economy work better.'
   },
   towerBlock: {
     name: 'Tower block', role: 'high-density homes', landUse: 'urban', intensity: 'intense', cost: 5,
     gdp: { base: 3 }, waste: 2, residents: 4, wellbeingBase: 4, pressure: 2,
-    placement: 'landNextToBuilt', tags: ['residential'],
+    placement: 'landNextToBuilt', tags: ['residential'], uses: ['REC', 'AIR', 'WAT'],
     tip: 'Lots of people on a small footprint.'
   },
   familyFarm: {
     name: 'Family farm', role: 'farm', landUse: 'cropland', intensity: 'light', cost: 3,
     gdp: { base: 1, serviceBonus: { service: 'POL', divisor: 2 } }, waste: 1, residents: 0, pressure: 1,
-    placement: 'landNextToBuilt', tags: ['farm'],
+    placement: 'landNextToBuilt', tags: ['farm'], uses: ['POL'],
     tip: 'Earns more with pollinators nearby.'
   },
   hillFarm: {
@@ -51,7 +52,7 @@ export const BUILDINGS = {
       seaPollutionPenalty: { radius: 2, divisor: 5 }
     },
     waste: 1, residents: 0, pressure: 1,
-    placement: 'landNextToBuilt', tags: [],
+    placement: 'landNextToBuilt', tags: [], uses: ['REC'],
     tip: 'Visitors pay for views and clean beaches.'
   },
   school: {
@@ -65,7 +66,7 @@ export const BUILDINGS = {
     name: 'Hospital', role: 'health', landUse: 'urban', intensity: 'light', cost: 5,
     gdp: { base: 2 }, waste: 1, residents: 0, pressure: 1,
     wellbeingBonus: { radius: 4, amount: 1, boostedAmount: 2, boost: { service: 'AIR', min: 3 } },
-    placement: 'landNextToBuilt', tags: [],
+    placement: 'landNextToBuilt', tags: [], uses: ['AIR'],
     tip: 'Cheers up homes within 4, more so with clean air.'
   },
   businessPark: {

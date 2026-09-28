@@ -1,7 +1,17 @@
 // Objectives (section 12).
 import { OBJECTIVES } from '../data/objectives.js';
-import { isNature, isFarm } from './grid.js';
-import { intactness } from './intensity.js';
+import { within, isNature, isBuilt, isFarm, isMarine, isLand } from './grid.js';
+import { intactness, reserveProtected } from './intensity.js';
+import { wasteTokensAt } from './waste.js';
+
+const habitatCount = (state, habitats) => state.cells.filter((c) => isNature(c) && habitats.includes(c.habitat)).length;
+
+// Cell counts per habitat, recorded at game start for "gain" objectives.
+export function habitatCounts(state) {
+  const out = {};
+  for (const c of state.cells) if (isNature(c)) out[c.habitat] = (out[c.habitat] ?? 0) + 1;
+  return out;
+}
 
 // Returns { met, progress } where progress is a short string for the HUD.
 export function evaluateObjective(state, id) {
@@ -14,8 +24,14 @@ export function evaluateObjective(state, id) {
       return { met: kept === state.startPrimary.length, progress: `${kept}/${state.startPrimary.length}` };
     }
     case 'habitatCount': {
-      const n = state.cells.filter((c) => isNature(c) && o.habitats.includes(c.habitat)).length;
+      const n = habitatCount(state, o.habitats);
       return { met: n >= o.value, progress: `${n}/${o.value}` };
+    }
+    case 'habitatGain': {
+      const start = o.habitats.reduce((s, h) => s + (state.startHabitats?.[h] ?? 0), 0);
+      const n = habitatCount(state, o.habitats);
+      const need = start + o.gain;
+      return { met: n >= need, progress: `${n}/${need}` };
     }
     case 'happinessMin':
       return { met: state.happiness >= o.value, progress: `${state.happiness.toFixed(1)}` };
@@ -23,8 +39,37 @@ export function evaluateObjective(state, id) {
       const v = intactness(state);
       return { met: v >= o.value - 1e-9, progress: `${Math.round(v * 100)}%` };
     }
+    case 'netGain': {
+      const v = intactness(state);
+      return { met: v >= state.stats.startIntactness - 1e-9, progress: `${Math.round(v * 100)}% vs ${Math.round(state.stats.startIntactness * 100)}%` };
+    }
+    case 'thirtyByThirty': {
+      const land = state.cells.filter(isLand);
+      const sea = state.cells.filter(isMarine);
+      const wild = land.filter((c) => isNature(c) && c.intensity === 'minimal').length / Math.max(1, land.length);
+      const reserved = sea.filter((c) => reserveProtected(state, c)).length / Math.max(1, sea.length);
+      return { met: wild >= o.land - 1e-9 && reserved >= o.sea - 1e-9, progress: `land ${Math.round(wild * 100)}%, sea ${Math.round(reserved * 100)}%` };
+    }
     case 'residentsMin':
       return { met: state.residents >= o.value, progress: `${state.residents}/${o.value}` };
+    case 'restorationsMin': {
+      const n = state.stats.restorations ?? 0;
+      return { met: n >= o.value, progress: `${n}/${o.value}` };
+    }
+    case 'cleanRivers': {
+      const dirty = state.cells.filter((c) => c.habitat === 'river' && wasteTokensAt(state, c) > 0).length;
+      const lake = state.cells.reduce((s, c) => s + (c.lakePollution ?? 0), 0);
+      return { met: dirty === 0 && lake === 0, progress: dirty || lake ? `${dirty} dirty, lake ${lake}` : 'clean' };
+    }
+    case 'natureShareMin': {
+      const share = state.cf.actual > 0 ? (state.cf.actual - state.cf.noNature) / state.cf.actual : 0;
+      return { met: share >= o.value - 1e-9, progress: `${Math.round(share * 100)}%` };
+    }
+    case 'coastGuard': {
+      const coastal = state.cells.filter((c) => isBuilt(c) && within(state, c.row, c.col, o.radius).some(isMarine));
+      const ok = coastal.filter((c) => (c.received?.[o.service] ?? 0) >= o.min).length;
+      return { met: coastal.length >= o.atLeast && ok === coastal.length, progress: `${ok}/${coastal.length} safe` };
+    }
     case 'noEventHits':
       return { met: state.stats.eventHits === 0, progress: `${state.stats.eventHits} hit` };
     case 'farmsWithService': {

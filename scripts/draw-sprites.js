@@ -622,6 +622,62 @@ I.sapling = () => {
   return cv.rows();
 };
 
+// Restoration actions.
+I.act_plantWoodland = () => {
+  const cv = new Canvas();
+  cv.ellipse(16, 25, 12, 4, '2').ellipse(16, 24, 10, 2.5, '1');
+  cv.line(16, 24, 16, 12, '2', 2);
+  cv.ellipse(10, 12, 5, 3, '7').ellipse(22, 10, 5, 3, '6').circle(16, 7, 4.5, '7');
+  cv.set(9, 11, '8'); cv.set(15, 5, '8');
+  cv.line(26, 26, 29, 16, 'f', 2).rrect(27, 12, 4, 5, 1, '2');
+  cv.outline();
+  return cv.rows();
+};
+
+I.act_restoreWetland = () => {
+  const cv = new Canvas();
+  cv.ellipse(16, 26, 14, 4, 'b').ellipse(12, 25, 4, 1, 'c');
+  for (const [x, top] of [[8, 9], [12, 5], [17, 8], [21, 4], [25, 10]]) cv.line(x, 25, x + (x % 2 ? 1 : -1), top, x % 3 ? '6' : '7', 2);
+  cv.rrect(11, 3, 3, 5, 1, '2').rrect(20, 2, 3, 5, 1, '2');
+  cv.circle(27, 5, 3, 'b').poly([[27, 0], [24, 4], [30, 4]], 'b').set(26, 4, 'c');
+  cv.outline();
+  return cv.rows();
+};
+
+I.act_sowMeadow = () => {
+  const cv = new Canvas();
+  cv.rrect(3, 4, 12, 15, 2, '4').rect(3, 4, 12, 4, 'e');
+  flower(cv, 9, 13, 'd', 'e');
+  cv.set(8, 16, '6'); cv.set(9, 17, '6');
+  for (const [x, y] of [[18, 9], [21, 13], [19, 17], [24, 11]]) cv.ellipse(x, y, 1, 0.8, '2');
+  for (const [x, y, c] of [[10, 26, 'd'], [17, 25, '9'], [24, 26, 'e'], [28, 22, '4']]) {
+    cv.line(x, 30, x, y + 2, '6');
+    cv.circle(x, y, 2, c).set(x, y, c === 'e' ? '2' : 'e');
+  }
+  cv.outline();
+  return cv.rows();
+};
+
+I.act_rewetPeat = () => {
+  const cv = new Canvas();
+  cv.rrect(1, 16, 30, 14, 3, '1');
+  cv.rrect(3, 17, 12, 8, 2, 'b').ellipse(7, 19, 2.5, 0.8, 'c');
+  cv.rect(15, 11, 4, 18, '2').rect(15, 11, 4, 1, '3').rect(16, 14, 2, 1, '1').rect(16, 20, 2, 1, '1');
+  cv.rect(19, 22, 11, 3, '3');
+  cv.ellipse(6, 13, 3, 2, '7').ellipse(26, 14, 3, 2, '6');
+  cv.outline();
+  return cv.rows();
+};
+
+I.act_marineReserve = () => {
+  const cv = new Canvas();
+  cv.circle(16, 16, 13, 'd').circle(16, 16, 8.5, '.');
+  for (const a of [0.8, 2.4, 3.9, 5.5]) cv.line(16 + Math.cos(a) * 9, 16 + Math.sin(a) * 9, 16 + Math.cos(a) * 13, 16 + Math.sin(a) * 13, '4', 3);
+  cv.ellipse(15, 16, 4, 2.5, 'c').poly([[18, 16], [22, 13], [22, 19]], 'c').set(13, 15, '0');
+  cv.outline();
+  return cv.rows();
+};
+
 I.icon_fullscreen = () => {
   const cv = new Canvas();
   const corner = (x, y, dx, dy) => cv.line(x, y, x + dx * 8, y, '4', 3).line(x, y, x, y + dy * 8, '4', 3);

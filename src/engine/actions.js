@@ -4,11 +4,11 @@ import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { RESTORATIONS } from '../data/restorations.js';
 import { SERVICE_KEYS } from '../data/services.js';
-import { ortho, isBuilt, isNature, isLand, cellAt, round1 } from './grid.js';
+import { ORTHO, ortho, isBuilt, isNature, isLand, cellAt, round1 } from './grid.js';
 import { placeBuilding, recompute } from './state.js';
 import { updateMarket, discardEarlierPiles, menuUnlocked, stageForTurn, surcharge } from './market.js';
 import { updateIntensity, applyPrimaryLoss, applySuccession, intactness } from './intensity.js';
-import { computeSupply, computeReceived, emptyServices } from './services.js';
+import { computeSupply, computeReceived, emptyServices, topContributor } from './services.js';
 import { computeHappiness, happiness } from './happiness.js';
 import { projectGdp, counterfactualGdp, happinessMultiplier } from './gdp.js';
 import { resolveWaste } from './waste.js';
@@ -21,7 +21,7 @@ export function cloneState(st) {
   const copyServices = (o) => (o ? { ...o } : o);
   return {
     ...st,
-    config: { ...st.config, eventTurns: st.config.eventTurns.slice(), marketSurcharge: st.config.marketSurcharge.slice(),
+    config: { ...st.config, objectives: st.config.objectives ? st.config.objectives.slice() : st.config.objectives, eventTurns: st.config.eventTurns.slice(), marketSurcharge: st.config.marketSurcharge.slice(),
       pressureThresholds: st.config.pressureThresholds.slice(), stageStartTurns: { ...st.config.stageStartTurns } },
     cells: st.cells.map((c) => ({ ...c, supply: copyServices(c.supply), received: copyServices(c.received) })),
     market: st.market ? { slots: st.market.slots.slice(), piles: Object.fromEntries(Object.entries(st.market.piles).map(([k, v]) => [k, v.slice()])) } : null,
@@ -30,6 +30,8 @@ export function cloneState(st) {
     objectives: st.objectives.slice(),
     startPrimary: st.startPrimary.slice(),
     stats: { ...st.stats },
+    startHabitats: { ...st.startHabitats },
+    objectiveOffer: st.objectiveOffer.slice(),
     cf: { ...st.cf, without: { ...st.cf.without } },
     history: st.history.map((h) => ({ ...h })),
     final: st.final ? structuredClone(st.final) : null
@@ -75,8 +77,18 @@ function isBuiltNeighbour(c) {
   return isBuilt(c) && !BUILDINGS[c.building].notBuiltNeighbour;
 }
 
+// Orthogonally next to a built tile, or next to one across a single river square (as if bridged).
 function nextToBuilt(state, cell) {
-  return ortho(state, cell.row, cell.col).some(isBuiltNeighbour);
+  for (const [dr, dc] of ORTHO) {
+    const n = cellAt(state, cell.row + dr, cell.col + dc);
+    if (!n) continue;
+    if (isBuiltNeighbour(n)) return true;
+    if (isNature(n) && n.habitat === 'river') {
+      const far = cellAt(state, cell.row + 2 * dr, cell.col + 2 * dc);
+      if (far && isBuiltNeighbour(far) && isLand(far)) return true;
+    }
+  }
+  return false;
 }
 
 function isBuildableLand(cell) {
@@ -155,6 +167,7 @@ function applyChoice(state, choice, row, col, log) {
       cell.restored = true;
       if (demolished) log.push({ type: 'demolish', building: demolished, row, col });
     }
+    state.stats.restorations = (state.stats.restorations ?? 0) + 1;
     log.push({ type: 'restore', restoration: choice.restoration, row, col });
   }
   if (wasPrimary && cell.landUse !== 'primary') {
@@ -211,8 +224,17 @@ export function preview(state, choice, row, col) {
       }
     }
   }
+  // Where the new tile's services would come from (for preview arrows).
+  const sources = [];
+  if (isBuilt(cell)) {
+    for (const s of BUILDINGS[cell.building].uses ?? []) {
+      const src = topContributor(after, row, col, s);
+      if (src && cell.received[s] > 0) sources.push({ service: s, row: src.row, col: src.col });
+    }
+  }
   return {
     gdp: isBuilt(cell) ? cell.gdp : 0,
+    sources,
     received: isBuilt(cell) ? { ...cell.received } : null,
     intensityChanges,
     happinessDelta: round1(after.happiness - before.happiness),

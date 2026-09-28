@@ -14,6 +14,8 @@ const config = {
   width: W * RES,
   height: H * RES,
   pixelArt: true,
+  // Use real frame times so animations and turn timing keep real-world speed on slow devices.
+  fps: { smoothStep: false },
   backgroundColor: '#1b1b24',
   scale: {
     mode: Phaser.Scale.FIT,

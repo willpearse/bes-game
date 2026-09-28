@@ -12,6 +12,7 @@ import { updateIntensity, intactness } from './intensity.js';
 import { computeSupply, computeReceived } from './services.js';
 import { computeHappiness } from './happiness.js';
 import { projectGdp } from './gdp.js';
+import { habitatCounts } from './objectives.js';
 
 const CODE_TO_HABITAT = Object.fromEntries(Object.entries(HABITATS).map(([k, h]) => [h.code, k]));
 
@@ -93,6 +94,18 @@ export function recompute(state) {
   return { changes, projection: proj };
 }
 
+// The objectives offered to the player: drawn from the seed, so a seed always offers the same ones.
+function offerObjectives(state) {
+  const c = state.config;
+  return sample(state, Object.keys(OBJECTIVES), Math.max(c.objectiveOffer, c.objectiveCount));
+}
+
+// The player's chosen objectives if valid (distinct, from the offer, the right number), else the first of the offer.
+export function chooseObjectives(offer, chosen, count) {
+  const ok = Array.isArray(chosen) && chosen.length === count && new Set(chosen).size === count && chosen.every((id) => offer.includes(id));
+  return ok ? chosen.slice() : offer.slice(0, count);
+}
+
 export function createGame({ mapId, config, seed, map: customMap } = {}) {
   const cfg = { ...CONFIG, ...(config ?? {}) };
   if (mapId) cfg.mapId = mapId;
@@ -127,7 +140,9 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     eventHistory: [],
     objectives: [],
     startPrimary: [],
-    stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0 },
+    stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0, restorations: 0 },
+    startHabitats: {},
+    objectiveOffer: [],
     cf: { actual: 0, noNature: 0, without: Object.fromEntries(SERVICE_KEYS.map((k) => [k, 0])) },
     history: [],
     final: null
@@ -138,9 +153,11 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
   if (cfg.marketMode === 'market') initMarket(state);
   const eventIds = sample(state, Object.keys(EVENTS), Math.min(cfg.eventCount, cfg.eventTurns.length));
   state.events = cfg.eventTurns.slice(0, eventIds.length).map((turn, i) => ({ turn, id: eventIds[i] }));
-  state.objectives = sample(state, Object.keys(OBJECTIVES), cfg.objectiveCount);
+  state.objectiveOffer = offerObjectives(state);
+  state.objectives = chooseObjectives(state.objectiveOffer, cfg.objectives, cfg.objectiveCount);
 
   recompute(state);
   state.stats.startIntactness = intactness(state);
+  state.startHabitats = habitatCounts(state);
   return state;
 }

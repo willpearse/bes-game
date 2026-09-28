@@ -2,7 +2,7 @@
 import { CONFIG } from '../data/config.js';
 import { SERVICES, SERVICE_KEYS } from '../data/services.js';
 import { HABITATS } from '../data/habitats.js';
-import { BUILDING_SERVICES } from '../data/buildings.js';
+import { BUILDINGS, BUILDING_SERVICES } from '../data/buildings.js';
 import { within, isBuilt } from './grid.js';
 import { cellB } from './intensity.js';
 
@@ -67,4 +67,27 @@ export function topContributor(state, row, col, s) {
     if (c.supply[s] > 0 && (best === null || c.supply[s] > best.supply[s])) best = c;
   }
   return best;
+}
+
+// Nature at work: for each built tile and each service it uses, the cell that supplies most of it.
+// Returns up to `max` deliveries, spread across services and tiles (round-robin), in a stable order.
+export function deliveries(state, max = Infinity) {
+  const byService = {};
+  for (const cell of state.cells) {
+    if (!isBuilt(cell)) continue;
+    for (const s of BUILDINGS[cell.building].uses ?? []) {
+      if ((cell.received?.[s] ?? 0) <= 0) continue;
+      const src = topContributor(state, cell.row, cell.col, s);
+      if (!src) continue;
+      (byService[s] = byService[s] ?? []).push({
+        service: s, from: { row: src.row, col: src.col }, to: { row: cell.row, col: cell.col }, amount: cell.received[s]
+      });
+    }
+  }
+  const queues = SERVICE_KEYS.map((k) => byService[k] ?? []);
+  const out = [];
+  for (let i = 0; out.length < max && queues.some((q) => i < q.length); i++) {
+    for (const q of queues) if (i < q.length && out.length < max) out.push(q[i]);
+  }
+  return out;
 }

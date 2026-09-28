@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { tinyGame, at } from './helpers.js';
 import { placeBuilding, recompute } from '../src/engine/state.js';
 import { updateIntensity, applyPrimaryLoss, applySuccession, pressureOn, reserveProtected, intactness } from '../src/engine/intensity.js';
-import { computeSupply, computeReceived, receivedAt, topContributor } from '../src/engine/services.js';
+import { computeSupply, computeReceived, receivedAt, topContributor, deliveries } from '../src/engine/services.js';
 import { wellbeing, wellbeingParts, happiness, computeHappiness } from '../src/engine/happiness.js';
 import { takeTurn, legalTargets } from '../src/engine/actions.js';
 
@@ -232,5 +232,22 @@ describe('intactness', () => {
   it('is the mean B over land cells only', () => {
     const s = tinyGame(['Go']);
     expect(intactness(s)).toBe(1);
+  });
+});
+
+describe('deliveries', () => {
+  it('lists the top supplier of each used service, capped and spread across services', () => {
+    const s = tinyGame(['wgw', 'g#g', 'Fgf'], { buildings: { F: 'familyFarm' } });
+    const all = deliveries(s);
+    const services = all.map((d) => d.service);
+    expect(services).toContain('POL'); // to the farm
+    expect(services).toContain('REC'); // to the cottages
+    expect(all.every((d) => d.amount > 0)).toBe(true);
+    const home = all.find((d) => d.service === 'AIR' && d.to.row === 1);
+    expect(at(s, home.from.row, home.from.col).habitat).toBe('woodland');
+    const two = deliveries(s, 2);
+    expect(two).toHaveLength(2);
+    expect(two[0].service).not.toBe(two[1].service);
+    expect(deliveries(tinyGame(['ggg']))).toEqual([]);
   });
 });

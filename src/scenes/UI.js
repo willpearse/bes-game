@@ -5,6 +5,7 @@ import { BUILDINGS } from '../data/buildings.js';
 import { RESTORATIONS, RESTORATION_KEYS } from '../data/restorations.js';
 import { SERVICES, SERVICE_KEYS, OTHER_NCP_NOTE } from '../data/services.js';
 import { EVENTS } from '../data/events.js';
+import { OBJECTIVES } from '../data/objectives.js';
 import { STAGE_ORDER, MENU_UNLOCKS } from '../data/decks.js';
 import { RIGHT_X, RIGHT_W, BOTTOM_Y, BOARD_X, W, H, setupCamera, logicalPointer } from '../ui/layout.js';
 import { text, button, panel, money, fmt1 } from '../ui/widgets.js';
@@ -52,6 +53,8 @@ export class UI extends Phaser.Scene {
     const onHover = () => this.refreshInspector();
     const onOverlay = () => this.refreshBottom();
     const onAnimated = (e) => this.afterTurn(e.log);
+    const onToast = (msg) => this.toast(msg, C.accent);
+    s.on('toast', onToast);
     s.on('selection', onSel);
     s.on('preview', onPreview);
     s.on('inspect', onInspect);
@@ -61,6 +64,7 @@ export class UI extends Phaser.Scene {
     this.events.once('shutdown', () => {
       s.off('selection', onSel); s.off('preview', onPreview); s.off('inspect', onInspect);
       s.off('hover', onHover); s.off('overlay', onOverlay); s.off('turnAnimated', onAnimated);
+      s.off('toast', onToast);
     });
 
     this.input.keyboard.on('keydown-P', () => s.pass());
@@ -83,7 +87,7 @@ export class UI extends Phaser.Scene {
     this.add.image(700, 20, 'waste').setScale(1);
     this.hudSea = text(this, 716, 10, '', { size: 18 });
     this.hudEvent = text(this, 16, 46, '', { size: 15, color: C.accent });
-    this.hudObjTitle = text(this, 880, 6, 'Objectives (+£50 each)', { size: 12, color: C.dim });
+    this.hudObjTitle = text(this, 880, 6, 'Objectives (+£50 each, hover for details)', { size: 12, color: C.dim });
     this.hudObj = [text(this, 880, 24, '', { size: 14 }), text(this, 880, 46, '', { size: 14 })];
 
     const tipZone = (x, y, w, h, fn) => {
@@ -96,6 +100,8 @@ export class UI extends Phaser.Scene {
     tipZone(468, 4, 100, 34, () => 'Happiness (0 to 10): the average wellbeing of residents.\nAbove 5 it boosts GDP; below 5 it drags it down.');
     tipZone(568, 4, 120, 34, () => 'Biodiversity intactness: average nature value (B) across the land.\nIt started at ' + Math.round(this.session.state.stats.startIntactness * 100) + '%.');
     tipZone(690, 4, 170, 34, () => 'Sea pollution: waste that has reached the sea.\nIt hurts fishing and holiday parks. Healthy seagrass cleans it slowly.');
+    tipZone(876, 4, 400, 70, () => evaluateObjectives(this.session.state)
+      .map((o) => `${o.met ? '✔ On track' : '○ Not yet'}: ${o.name}\n${o.text} (now ${o.progress})\n${OBJECTIVES[o.id].why}`).join('\n\n'));
     tipZone(10, 40, 860, 34, () => {
       const ev = upcomingEvent(this.session.state);
       return ev ? `${EVENTS[ev.id].name}\n${EVENTS[ev.id].blurb}` : 'No more events.';
@@ -121,7 +127,7 @@ export class UI extends Phaser.Scene {
       this.hudEvent.setText('No more events this game.');
     }
     evaluateObjectives(st).forEach((o, i) => {
-      this.hudObj[i].setText(`${o.met ? '✔' : '○'} ${o.name}: ${o.text} (${o.progress})`);
+      this.hudObj[i].setText(`${o.met ? '✔' : '○'} ${o.name} (${o.progress})`);
       this.hudObj[i].setColor(o.met ? C.good : C.text);
     });
   }
@@ -271,9 +277,12 @@ export class UI extends Phaser.Scene {
     this.modeHint = text(this, RIGHT_X + 220, y + 8, '', { size: 13, color: C.dim });
     this.restBtns = RESTORATION_KEYS.map((id, i) => {
       const r = RESTORATIONS[id];
-      const b = button(this, RIGHT_X + i * 140, y + 40, 134, 30, r.name, () => { if (!s.busy) s.selectRestoration(id); }, {
-        size: 12, onHover: (on) => (on ? this.showTip(`${r.name}\n${r.tip}\nWorks on: ${this.restoreTargetsText(id)}`) : this.hideTip())
+      const b = button(this, RIGHT_X + i * 140, y + 38, 134, 36, r.short, () => { if (!s.busy) s.selectRestoration(id); }, {
+        size: 13, bold: true,
+        onHover: (on) => (on ? this.showTip(`${r.name}\n${r.tip}\nWorks on: ${this.restoreTargetsText(id)}`) : this.hideTip())
       });
+      b.add(this.add.image(20, 18, r.icon).setScale(0.875));
+      b.label.setX(78);
       b.restoration = id;
       return b;
     });
@@ -364,7 +373,7 @@ export class UI extends Phaser.Scene {
       } else {
         const r = RESTORATIONS[s.choice.restoration];
         this.inspTitle.setText(`${r.name} here: £${pv.cost}`);
-        this.inspSprite.setVisible(false);
+        this.inspSprite.setTexture(r.icon).setVisible(true);
       }
       const lines = [];
       lines.push(`On: ${habitatName(cell.habitat)}${cell.kind === 'built' ? ` (${BUILDINGS[cell.building].name})` : ''}`);
@@ -443,12 +452,12 @@ export class UI extends Phaser.Scene {
   // iPhones do not allow it for web pages; there, "Add to Home Screen" opens the game without browser bars.
   buildFullscreenButton(x, y) {
     if (!this.scale.fullscreen.available) {
-      text(this, W - 16, BOTTOM_Y + 18, 'D: debug view', { size: 12, color: C.dim, origin: [1, 0] });
+      text(this, W - 16, BOTTOM_Y + 18, 'N: animations · D: debug', { size: 11, color: C.dim, origin: [1, 0] });
       return;
     }
     const b = button(this, x, y, 64, 40, '', () => this.scale.toggleFullscreen(), {
       onUp: true,
-      onHover: (on) => (on ? this.showTip('Full screen on or off.\nD: debug view.') : this.hideTip())
+      onHover: (on) => (on ? this.showTip('Full screen on or off.\nN: nature at work animations on or off.\nD: debug view.') : this.hideTip())
     });
     b.add(this.add.image(32, 20, 'icon_fullscreen').setScale(0.75));
   }

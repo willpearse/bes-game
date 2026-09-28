@@ -83,8 +83,7 @@ export class End extends Phaser.Scene {
     });
 
     button(this, 40, 676, 220, 36, 'Replay this seed', () => this.scene.start('Game', { config: { ...st.config, seed: st.seed } }), { bold: true });
-    button(this, 270, 676, 180, 36, 'New game', () => this.scene.start('Game', { config: { ...st.config, seed: null } }), { bold: true, fill: 0x4d6a3a });
-    button(this, 460, 676, 180, 36, 'Title screen', () => this.scene.start('Title', { fromUrl: false, config: { ...st.config, seed: null } }));
+    button(this, 270, 676, 220, 36, 'New game', () => this.scene.start('Title', { fromUrl: false, config: { ...st.config, seed: null, objectives: null } }), { bold: true, fill: 0x4d6a3a });
     if (rank === 0 && list.length > 1) text(this, W - 40, 30, 'New high score!', { size: 22, bold: true, color: C.gold, origin: [1, 0] });
   }
 }

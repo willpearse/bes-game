@@ -35,6 +35,7 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 ### Building and restoring
 
 6. **"Next to built"**: every built tile except Fishing fleet and Offshore wind farm counts, including a Harbour, so a town can grow along the shore from a harbour.
+6a. **Crossing rivers (designer's change).** A land square also counts as "next to built" when a single river square lies between it and a built land tile in a straight line, as if bridged. Without this the estuary river (which runs the full height of the map) kept every town on the right bank. Bridges are free and have no effect on nature yet; see `TODO.md`.
 7. **Wind farms on reserves.** Only fleets and harbours are banned from reserve cells, so a wind farm can go on one. While a reserve cell is built on, it does not turn into seagrass.
 8. **Losing ancient habitat another way.** Building on a Primary cell, or restoring one (for example planting woodland on ancient meadow), also counts as losing ancient habitat. It shows the same toast and counts toward "Ancient habitats lost" on the end screen. The preview warns in both cases, and also warns when a build would push a nearby Primary cell to intense use.
 9. **Restore in market mode.** The player picks which card to discard; the cheapest non-empty slot is selected by default. Taking slot k for a restoration counts as "taking" it for the market rule, so slot 0 is also discarded unless k = 0.
@@ -68,6 +69,9 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 
 26. **Farm to fork**: at least 4 farm tiles that each receive POL ≥ 3. Other farms can exist too.
 27. **Ancient heritage** checks every cell that started Primary. Building on one or restoring it fails the objective.
+27a. **Pick 2 of 4 (designer's change).** The seed draws 4 objectives (`objectiveOffer` in config); the player keeps 2 on the title screen (`config.objectives`). Invalid choices fall back to the first 2 on offer. The offer is drawn last, so choosing does not change the market or events.
+27b. **New objectives and thresholds.** Added: Biodiversity net gain, 30 by 30, Pollinator paradise, Blue carbon, Rewilder, Clean rivers, Nature pays, Coast guard. On the estuary map, several fixed counts would be met on turn 1 (30 meadow/heath, 11 saltmarsh/seagrass, 7 fen/peat cells), so those are measured against the start: Wetland county is now "create 2 new fen or peat bog cells", Pollinator paradise is "no net loss of meadow and heath", Blue carbon is "gain 2 saltmarsh or seagrass". 30 by 30 counts sea cells protected by a reserve (the reserve cell and marine cells within 1). Coast guard needs at least 2 built tiles within 2 of the sea, all receiving FLD ≥ 3. Nature pays uses the running counterfactual totals (before any end-game happiness multiplier).
+27c. **Fixed settings (designer's change).** Flowing waste and crowding (population pressure) are always on. The title screen no longer offers them; `?waste=simple` and `?pressure=0` still work for testing.
 
 ### Art and UI
 
@@ -75,7 +79,10 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 29. **Worn and recovering looks** are derived in `src/art/textures.js`. Light and intense use turn soft, noise-shaped patches of vegetation into bare ground (about 20% and 50%). Young and intermediate stages thin the vegetation the same way; woodland has hand-drawn saplings and small trees instead. Built tiles stand on the intense-use version of their habitat.
 30. **Sharp text.** The canvas is drawn at twice the logical size (2560×1440; `RES` in `src/ui/layout.js`), and every scene's camera zooms ×2. Text is rendered at high resolution with smooth filtering. Phaser's pixel-art mode sets `image-rendering: pixelated` on the canvas, which made text speckled whenever the browser shrank the canvas; `main.js` sets it back to smooth. Sprites still look crisp, because inside the canvas each sprite pixel covers exactly 3×3 canvas pixels. The font is the system sans-serif (Trebuchet MS / Segoe UI / Verdana).
 31. **Full screen.** A button at the bottom right (and on the title screen) toggles full screen where the browser allows it (desktop, Android). iPhones do not allow it for web pages, so the page is also an installable web app (`public/manifest.webmanifest`, Apple home-screen tags, icons): "Add to Home Screen" opens it without browser bars. The title screen explains this on touch devices without full-screen support. In portrait on a small screen, a banner suggests turning the phone sideways.
-32. Hints show on the first game only, at most one per turn: how to place, overlays (after the first build), waste (turn 3+), restoring (turn 5+).
+32. **Nature at work animations.** Each turn, up to 10 small icons fly from the nature square that supplies the most of a service to a tile that uses it (`deliveries()` in `engine/services.js`; `uses` in `data/buildings.js`): pollination to family farms, recreation, clean air and water to homes, recreation to holiday parks, clean air to hospitals. Bees wobble and leaves spin. In events, shields pop up over protected tiles with a line back to the protector, and hit tiles flash red. Placement previews draw arrows from each supplying square. On by default; switch on the title screen or with N.
+33. **Restore icons** appear on the Restore buttons (short labels, full name in the tooltip), as faint ghosts on every square an action can be used on, and in the inspector preview.
+34. **Real-time animation.** Phaser's default smooths frame times to 60 fps, which slowed every timer and animation when the frame rate dropped (turns took several seconds to finish in a software-rendered browser). `fps.smoothStep` is off so timings stay in real time.
+35. Hints show on the first game only, at most one per turn: how to place, overlays (after the first build), waste (turn 3+), restoring (turn 5+).
 
 ## Balance observations (placeholder numbers)
 
@@ -123,9 +130,4 @@ What stands out:
 - **The greedy bot scores about 3 times as much as the random bot** (£1,213 against £402) and loses about 6 ancient cells a game, against about 1 for the random bot. Chasing GDP visibly costs biodiversity, which fits the design intent.
 - Nature's share of GDP is about 50 to 60%. That seems a good headline number, but it is mostly Recreation and Air, largely because of the cap effect above.
 
-## Open questions
-
-- Should lake pollution recover over time, and should lakes count as land in the intactness mean? At the moment they do count, because the spec says "all land cells" and lakes are land-side water.
-- Should the Fishing fleet's seagrass bonus and the Holiday park's ancient-habitat bonus count toward nature's contribution (see 17)?
-- Should Offshore wind farms be allowed on marine reserves (see 7)?
-- The spec's `valleyFormula` hard-codes column 4 as the river line. Future maps should store an explicit elevation grid, which the map loader already accepts (`"elevation": [[...], ...]`).
+Open questions and future work are in `TODO.md`.

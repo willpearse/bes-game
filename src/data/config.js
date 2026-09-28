@@ -8,7 +8,7 @@ export const CONFIG = {
   marketSurcharge: [0, 0, 1, 2, 3, 4],
   wasteMode: 'tokens',         // 'tokens' | 'simple'
   happinessMode: 'perTurn',    // 'perTurn' | 'endGame'
-  populationPressure: false,
+  populationPressure: true,
   pressureThresholds: [10, 20, 30, 40],
   serviceCap: 6,
   objectiveBonus: 50,
@@ -17,7 +17,9 @@ export const CONFIG = {
   // Extra constants not named in section 15 of the spec, kept here so logic has no magic numbers.
   stageStartTurns: { A: 1, B: 9, C: 17 },
   menuRestoreCost: 1,
-  objectiveCount: 2,
+  objectiveCount: 2,          // objectives the player keeps
+  objectiveOffer: 4,          // objectives offered to choose from
+  objectives: null,           // chosen objective ids; null = the first objectiveCount of the offer
   eventCount: 3,
   riverMaxSteps: 3,
   seaPollutionPressureThreshold: 10,

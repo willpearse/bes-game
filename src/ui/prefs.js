@@ -84,3 +84,12 @@ export function savedSettings() {
 export function saveSettings(cfg) {
   store.set('gp_settings', cfg);
 }
+
+// "Nature at work" delivery animations (on by default).
+export function natureAnimations() {
+  return store.get('gp_nature_anim', true) !== false;
+}
+
+export function setNatureAnimations(on) {
+  store.set('gp_nature_anim', !!on);
+}

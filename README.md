@@ -1,6 +1,6 @@
 # Green and Pleasant
 
-A single-player, browser-based, pixel-art tile-placement game about the value of nature to a local economy, set in Great Britain. Prototype built from `SPEC.md`-style design notes; see `NOTES.md` for rule interpretations, open questions and balance notes.
+A single-player, browser-based, pixel-art tile-placement game about the value of nature to a local economy, set in Great Britain. See `NOTES.md` for rule interpretations and balance notes, `TODO.md` for future work, and `CLAUDE.md` for a guide to the code.
 
 ## Run it
 
@@ -15,7 +15,7 @@ npm run simulate -- --games 500 --bot greedy
 
 ## Variants
 
-Every variant can be switched on the title screen or by URL query:
+The title screen offers the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste and crowding are always on in normal play, but every variant can still be switched by URL query for testing:
 
 ```
 ?market=menu&waste=simple&happiness=endGame&pressure=1&seed=42
@@ -26,14 +26,14 @@ Every variant can be switched on the title screen or by URL query:
 | `market` | `market` (default), `menu` | Take tiles from a 6-slot market, or pick any unlocked tile |
 | `waste` | `tokens` (default), `simple` | Waste tokens flow downhill, or only affect neighbours |
 | `happiness` | `perTurn` (default), `endGame` | When happiness multiplies GDP |
-| `pressure` | `0` (default), `1` | Population pressure lowers happiness |
+| `pressure` | `1` (default), `0` | Population pressure (crowding) lowers happiness |
 | `seed` | number | Replay a particular game |
 
 ## Controls
 
 - Click a market card, then a gold square on the map, to build.
 - Switch to **Restore**, pick an action and a card to discard, then click a square.
-- **P** passes the turn. **Esc** or right-click cancels. **D** toggles the debug view.
+- **P** passes the turn. **Esc** or right-click cancels. **N** turns the nature-at-work animations on or off. **D** toggles the debug view.
 - The bottom bar switches map overlays (each service, biodiversity, waste flow). The button at its right end toggles full screen.
 - On a phone, play it sideways. On iPhone or iPad, tap Share → "Add to Home Screen" to play without browser bars (Apple doesn't allow a full-screen button on web pages).
 

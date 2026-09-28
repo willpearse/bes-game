@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tinyGame, at } from './helpers.js';
-import { createGame, placeBuilding, recompute } from '../src/engine/state.js';
+import { createGame, placeBuilding, recompute, chooseObjectives } from '../src/engine/state.js';
 import { takeTurn, legalTargets, preview, choiceCost, canAfford, canRestore } from '../src/engine/actions.js';
 import { drawTile, updateMarket, menuUnlocked } from '../src/engine/market.js';
 import { resolveEvent, tilesAtRisk, upcomingEvent, eventDamageFor } from '../src/engine/events.js';
@@ -92,9 +92,9 @@ describe('placement and restoration', () => {
   it('land tiles next to built only', () => {
     const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
     const tg = legalTargets(s, { type: 'build', building: 'cottages' });
-    // Orthogonal neighbours of the village at (4,5),(5,5), excluding river (4,4),(5,4).
+    // Orthogonal neighbours of the village at (4,5),(5,5), plus the squares across the river.
     const keys = tg.map((t) => `${t.row},${t.col}`).sort();
-    expect(keys).toEqual(['3,5', '4,6', '5,6', '6,5'].sort());
+    expect(keys).toEqual(['3,5', '4,6', '5,6', '6,5', '4,3', '5,3'].sort());
   });
   it('hill farms go on moorland or heath anywhere', () => {
     const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
@@ -159,6 +159,7 @@ describe('preview', () => {
     expect(p.intensityChanges.length).toBeGreaterThan(0);
     expect(typeof p.happinessDelta).toBe('number');
     expect(p.gdpDelta).toBeGreaterThan(0);
+    expect(p.sources.map((x) => x.service).sort()).toEqual(['AIR', 'REC', 'WAT']);
     const g = tinyGame(['#G']);
     const pw = preview(g, { type: 'build', building: 'cottages' }, 0, 1);
     expect(pw.warnings[0]).toMatch(/ancient habitat/);
@@ -296,6 +297,8 @@ describe('objectives', () => {
     expect(evaluateObjective(s, 'ancientHeritage').met).toBe(true);
     at(s, 0, 0).landUse = 'matureSecondary';
     expect(evaluateObjective(s, 'ancientHeritage').met).toBe(false);
+    expect(evaluateObjective(s, 'wetlandCounty').met).toBe(false); // needs 2 more than the start
+    s.startHabitats = { fen: 1 };
     expect(evaluateObjective(s, 'wetlandCounty').met).toBe(true);
     s.happiness = 8;
     expect(evaluateObjective(s, 'happyPlace').met).toBe(true);
@@ -308,7 +311,7 @@ describe('objectives', () => {
     const f = tinyGame(['gggggg', 'FFgFFg', 'gggggg'], { buildings: { F: 'familyFarm' } });
     expect(evaluateObjective(f, 'farmToFork').met).toBe(true);
     s.objectives = Object.keys(OBJECTIVES);
-    expect(evaluateObjectives(s)).toHaveLength(8);
+    expect(evaluateObjectives(s)).toHaveLength(Object.keys(OBJECTIVES).length);
     expect(() => evaluateObjective(s, 'nope')).toThrow();
   });
   it('adds the bonus to the final score', () => {
@@ -326,5 +329,94 @@ describe('objectives', () => {
     expect(f.endMultiplier).toBeCloseTo(1 + 0.1 * (s.happiness - 5), 5);
     expect(f.gdpAfterDamage).toBeCloseTo((s.gdpEarned - s.eventDamage) * f.endMultiplier, 0);
     expect(f.natureContribution).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('crossing rivers', () => {
+  it('counts a built tile across one river square as next to built', () => {
+    const s = tinyGame(['ggg', 'rrr', 'g#g']);
+    const keys = legalTargets(s, { type: 'build', building: 'cottages' }).map((t) => `${t.row},${t.col}`).sort();
+    // (2,0) and (2,2) touch the village; (0,1) is across the river at (1,1).
+    expect(keys).toEqual(['0,1', '2,0', '2,2']);
+  });
+  it('does not cross two river squares or diagonally', () => {
+    const s = tinyGame(['g', 'r', 'r', '#']);
+    expect(legalTargets(s, { type: 'build', building: 'cottages' })).toHaveLength(0);
+    const d = tinyGame(['gr', 'r#']);
+    expect(legalTargets(d, { type: 'build', building: 'cottages' })).toHaveLength(0);
+  });
+  it('does not bridge from fishing fleets or wind farms', () => {
+    const s = tinyGame(['grF'], { buildings: { F: 'fishingFleet' } });
+    expect(legalTargets(s, { type: 'build', building: 'cottages' })).toHaveLength(0);
+  });
+  it('lets the estuary village reach the left bank', () => {
+    const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
+    const cols = legalTargets(s, { type: 'build', building: 'cottages' }).map((t) => t.col);
+    expect(Math.min(...cols)).toBeLessThan(4);
+  });
+});
+
+describe('objective offer', () => {
+  it('offers 4 and keeps 2, the same for a seed', () => {
+    const a = createGame({ seed: 5 });
+    const b = createGame({ seed: 5 });
+    expect(a.objectiveOffer).toHaveLength(4);
+    expect(a.objectiveOffer).toEqual(b.objectiveOffer);
+    expect(a.objectives).toEqual(a.objectiveOffer.slice(0, 2));
+  });
+  it('uses the chosen objectives when valid', () => {
+    const offer = createGame({ seed: 5 }).objectiveOffer;
+    const pick = [offer[3], offer[1]];
+    expect(createGame({ seed: 5, config: { objectives: pick } }).objectives).toEqual(pick);
+    expect(createGame({ seed: 5, config: { objectives: ['nope', offer[0]] } }).objectives).toEqual(offer.slice(0, 2));
+    expect(chooseObjectives(offer, [offer[0], offer[0]], 2)).toEqual(offer.slice(0, 2));
+    expect(chooseObjectives(offer, null, 2)).toEqual(offer.slice(0, 2));
+  });
+  it('choosing objectives does not change the rest of the game', () => {
+    const offer = createGame({ seed: 5 }).objectiveOffer;
+    const a = createGame({ seed: 5 });
+    const b = createGame({ seed: 5, config: { objectives: [offer[2], offer[3]] } });
+    expect(b.market).toEqual(a.market);
+    expect(b.events).toEqual(a.events);
+  });
+});
+
+describe('new objectives', () => {
+  it('biodiversity net gain compares with the start', () => {
+    const s = createGame({ seed: 2 });
+    expect(evaluateObjective(s, 'netGain').met).toBe(true);
+    const t = takeTurn(s, { type: 'build', slot: s.market.slots.indexOf('cottages') >= 0 ? s.market.slots.indexOf('cottages') : 0,
+      ...legalTargets(s, { type: 'build', slot: s.market.slots.indexOf('cottages') >= 0 ? s.market.slots.indexOf('cottages') : 0 })[0] }).state;
+    expect(evaluateObjective(t, 'netGain').met).toBe(false);
+  });
+  it('30 by 30 needs sea reserves', () => {
+    const s = tinyGame(['ggggg#oooooooo']);
+    expect(evaluateObjective(s, 'thirtyByThirty').met).toBe(false);
+    at(s, 0, 9).reserve = true;
+    recompute(s);
+    expect(evaluateObjective(s, 'thirtyByThirty').met).toBe(true);
+  });
+  it('habitat gain, restorations, clean rivers, nature pays, coast guard', () => {
+    let s = tinyGame(['#gg', 'rgl']);
+    expect(evaluateObjective(s, 'pollinatorParadise').met).toBe(true);
+    s = takeTurn(s, { type: 'restore', restoration: 'plantWoodland', row: 0, col: 1 }).state;
+    expect(evaluateObjective(s, 'pollinatorParadise').met).toBe(false);
+    expect(s.stats.restorations).toBe(1);
+    expect(evaluateObjective(s, 'rewilder').progress).toBe('1/5');
+    at(s, 1, 0).waste = 0;
+    at(s, 1, 2).lakePollution = 0;
+    expect(evaluateObjective(s, 'cleanRivers').met).toBe(true);
+    at(s, 1, 0).waste = 1;
+    expect(evaluateObjective(s, 'cleanRivers').met).toBe(false);
+    s.cf.actual = 10; s.cf.noNature = 4;
+    expect(evaluateObjective(s, 'naturePays').met).toBe(true);
+    s.cf.noNature = 6;
+    expect(evaluateObjective(s, 'naturePays').met).toBe(false);
+    const c = tinyGame(['ss##', 'ssss', 'oooo']);
+    expect(evaluateObjective(c, 'coastGuard').met).toBe(true);
+    const c2 = tinyGame(['hh##', 'hhhh', 'oooo']);
+    expect(evaluateObjective(c2, 'coastGuard').met).toBe(false);
+    expect(evaluateObjective(tinyGame(['ss#', 'ooo']), 'coastGuard').met).toBe(false); // only one coastal tile
+    expect(evaluateObjective(s, 'blueCarbon').progress).toBe('0/2');
   });
 });
