@@ -38,7 +38,6 @@ function makeCell(row, col, habitat, landUse) {
     restored: false,
     reserve: false,
     reserveAge: null,
-    lakePollution: 0,
     pressure: 0,
     B: 0,
     supply: null,
@@ -133,7 +132,7 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     lastTurnGdp: 0,
     happiness: cfg.noResidentsHappiness,
     residents: 0,
-    seaPollution: 0,
+    pollution: 0,         // water pollution: waste that reached the sea or a lake
     cells: parseMap(map),
     market: null,
     events: [],

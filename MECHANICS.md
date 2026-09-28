@@ -1,118 +1,137 @@
 # MECHANICS
 
-A one-page view of how the rules turn into score, for balancing. Numbers are the current placeholders in `src/data/`. Findings marked *(probe)* come from 15 greedy-bot games (seeds 1 to 15); the rest are read from the code.
+A one-page view of how the rules turn into score. Numbers are the current placeholders in `src/data/`.
+
+## Why the game exists
+
+Green and Pleasant has two jobs, and both matter:
+
+1. **It must be fun.** Clear choices, visible consequences, a satisfying economy to grow.
+2. **It must teach how nature benefits people.** Ecosystem services are real, local and worth money. Development wears them down. Looking after nature pays back over time. The player should leave understanding *which* nature does *what* for *whom*.
+
+Each mechanic below is there to make one of those lessons playable. The last section lists them.
 
 ## 1. Score in one line
 
 ```
-score = Σ over 24 turns [ Σ tile GDP × (1 + 0.1 × (H − 5)) ]  −  event damage  +  50 × objectives met
+score = Σ over 24 turns [ Σ tile income × (1 + 0.1 × (H − 5))  −  Σ upkeep ]  −  event damage  +  50 × objectives met
 ```
 
-- **Tile GDP** is `base` plus a few bonuses and penalties (table 3).
-- **H** (happiness, 0 to 10) is a *global* multiplier on all GDP, from ×0.5 (H 0) to ×1.5 (H 10). Most of nature's value reaches the score through H.
-- **One action a turn** (build, restore or pass). Cash starts at 10 and is income, not score.
-- Biodiversity (B, intactness, ancient habitat) has **no direct score effect**. It only matters through services and objectives.
+- **Tile income** is a building's base GDP plus bonuses from nature, minus penalties from waste and pollution. It never goes below 0.
+- **Upkeep** is a fixed running cost per building. A tile whose income falls below its upkeep loses money.
+- **H** (happiness, 0 to 10) multiplies all income, from ×0.5 (H 0) to ×1.5 (H 10).
+- **One action a turn**: build, restore or pass. Cash starts at £10 and never goes below 0.
+- **Biodiversity is scored separately from GDP.** It never adds to GDP. It shows on the HUD and the end screen (intactness, ancient habitats lost), and several objectives reward it (Ancient heritage, Thriving wildlife, Biodiversity net gain, 30 by 30).
 
 ## 2. The causal chain
 
 ```
-buildings ──pressure──▶ nearby nature intensity ──▶ B ──▶ service supply ──▶ services received (capped at 6)
-    │                                                                               │
-    └──waste──▶ flows downhill ──▶ river ──▶ sea / lake                             ├─▶ tile GDP bonus (POL, REC)
-                   │                  │                                             ├─▶ wellbeing ─▶ H ─▶ ×GDP (REC, AIR, WAT)
-                   └─▶ pressure,      └─▶ sea pollution ─▶ fleet / holiday park      └─▶ event protection (FLD, AIR, WAT, POL)
-                       wellbeing, farm GDP                 GDP, marine pressure
+buildings ──pressure──▶ touching nature wears out (lower B) ──▶ less service supply
+    │                                                               │
+    │                        received = supply of the 4 touching squares (N, E, S, W), max 6
+    │                                                               │
+    │                    ┌──────────────────────┬───────────────────┼──────────────────────┐
+    │                    ▼                      ▼                   ▼                      ▼
+    │             POL: farm income      GRN: wellbeing ─▶ H    GRN: holiday park     WAT: fleet income
+    │                                   ─▶ ×all income          income               WAT: event protection
+    │                                                                                WAT: cleans waste
+    └──waste──▶ downhill ──▶ river ──▶ sea or lake ──▶ water pollution ──▶ fleet and holiday park income
 ```
 
-Supply = habitat base × B. Received = sum of supply within the service radius (POL 1, others 2), capped at 6.
+- **Supply** of a nature square = habitat value (0 to 3) × its biodiversity value B (0.4 to 1.0).
+- **Received** by a built tile = the sum of the supply of the four squares touching it, capped at 6.
+- **Pressure** on a nature square = the pressure of each building within 1 (including diagonals), +1 for waste on it, +1 for sea and lake squares when water pollution is 10 or more. Pressure 1 or 2 means light use; 3 or more means intense use. Heavier use lowers B.
 
-## 3. Buildings: what they earn, need and cause
+## 3. Three services
 
-| Building | Cost | Base GDP | Nature bonus to GDP | Other GDP modifiers | Waste | Pressure | Nuisance | Residents | Event risk |
-|---|---|---|---|---|---|---|---|---|---|
-| Cottages | 2 | 1 | – | – | 1 | 1 | – | 1 | heatwave (AIR) |
-| Tower block | 5 | 3 | – | – | 2 | 2 | – | 4 | heatwave (AIR) |
-| Family farm | 3 | 1 | +POL/2 (max +3) | −1 per waste token on it | 1 | 1 | – | – | heatwave (WAT), pests (POL) |
-| Hill farm | 2 | 2 | – | −1 per waste token | 0 | 1 | – | – | heatwave (WAT) |
-| Cluck Towers | 5 | 5 | – | −1 per waste token | 3 | 2 | 2 | – | heatwave (WAT) |
-| Conifer | 3 | 2 | – | – | 0 | 1 | – | – | pests (POL) |
-| Holiday park | 4 | 1 | +REC/2 (max +3), +1 if ancient within 2 | −2 if waste within 1; −sea pollution/5 if sea within 2 | 1 | 1 | – | – | – |
-| School | 3 | 1 | (+2 wellbeing if 2+ nature neighbours) | +1 wellbeing to homes within 3 | 0 | 1 | – | – | – |
-| Hospital | 5 | 2 | (+2 wellbeing if AIR ≥ 3) | +1 wellbeing to homes within 4 | 1 | 1 | – | – | – |
-| Business park | 4 | 2 | – | +1 per home within 2 (max +3) | 1 | 1 | – | – | – |
-| Factory | 5 | 6 | – | – | 3 | 2 | 2 | – | – |
-| Recycling centre | 3 | 0 | – | removes 3 waste from own + N,E,S,W | 0 | 1 | – | – | – |
-| Harbour | 5 | 5 | – | – | 2 | 2 | 2 | – | – |
-| Fishing fleet | 3 | 1 | +1 per healthy seagrass within 2 (max +3) | −sea pollution/5 | 0 | 2 | – | – | – |
-| Wind farm | 4 | 3 | – | – | 0 | 0 | – | – | – |
+| Service | What supplies it | Direct income | Happiness | Events | Waste |
+|---|---|---|---|---|---|
+| **POL** Pollination and pest control | meadow, heath, woodland | Family farm +POL/2 | – | Pests: family farm, conifer | – |
+| **GRN** Green space and clean air | woodland, lake, most habitats | Holiday park +GRN/2 | wellbeing +GRN (max +6) | Heatwave: homes | – |
+| **WAT** Clean water and flood protection | fen, peat, saltmarsh, seagrass | Fishing fleet +WAT/2 | – | River flood, storm surge: nearby tiles; heatwave: farms | a land square cleans its WAT supply (rounded down) in waste tokens a turn |
 
-Flood and storm events put **any** built tile near a river, lake (within 1) or the sea (within 2) at risk; protected if FLD ≥ 3. Damage per hit tile is max(2, 4 × its GDP).
+A tile is protected from an event if it receives 3 or more of the named service. Damage to each unprotected tile is max(£2, 4 × its GDP).
 
-## 4. Habitats: what they supply and clean
+## 4. Habitats
 
-Base supply at B = 1. Actual supply is multiplied by B (0.4 to 1.0 for nature).
+Base supply at B = 1. Ancient (primary) habitat has B 1.0, mature 0.9, and restored habitat starts at 0.6 and grows to 0.75 (after 3 turns) and 0.9 (after 7).
 
-| Habitat | POL | WAT | FLD | AIR | REC | Cleans waste | Notes |
-|---|---|---|---|---|---|---|---|
-| Peat bog | 0 | 3 | 2 | 3 | 1 | 1 | |
-| Moorland | 1 | 2 | 1 | 1 | 2 | 0 | Hill farm ground |
-| Heath | 2 | 1 | 0 | 1 | 2 | 1 | Hill farm ground |
-| Meadow | 3 | 1 | 1 | 1 | 2 | 1 | |
-| Woodland | 2 | 2 | 2 | 3 | 3 | 1 | Best all-rounder |
-| Fen | 1 | 3 | 3 | 2 | 2 | 2 | +1 riparian clean |
-| Saltmarsh | 0 | 2 | 3 | 2 | 1 | 2 | +1 riparian clean |
-| Dunes | 1 | 0 | 3 | 0 | 3 | 0 | |
-| River | 0 | 1 | 0 | 0 | 2 | 0 | carries waste 3 steps |
-| Lake | 0 | 2 | 1 | 0 | 3 | 0 | waste sink; −10% supply per token, forever |
-| Seagrass | 0 | 2 | 1 | 2 | 1 | – | −0.5 sea pollution a turn; fleet bonus |
-| Open sea | 0 | 0 | 0 | 0 | 1 | – | waste sink |
-
-Built tiles that also supply: family farm (POL 1), hill farm (POL 1, REC 1), conifer (FLD 1, AIR 2, REC 1), times their own B.
-
-## 5. Services: every route to the score
-
-| Service | Direct GDP | Via wellbeing → H → ×all GDP | Events | Objectives |
+| Habitat | POL | GRN | WAT | Cleans (at B 0.9) |
 |---|---|---|---|---|
-| **POL** (radius 1) | Family farm +POL/2 | – | Pests: family farm, conifer | Farm to fork |
-| **REC** | Holiday park +REC/2 | +REC/2 (max +3) | – | via Happy place |
-| **AIR** | – | +AIR/3 (max +2); hospital boost | Heatwave: homes | via Happy place |
-| **WAT** | – | −1 only if WAT < 2 | Heatwave: farms | – |
-| **FLD** | – | – | River flood, storm surge: all nearby tiles | Coast guard, Weathered it |
+| Peat bog | 0 | 2 | 3 | 2 |
+| Moorland | 1 | 2 | 1 | 0 |
+| Heath | 2 | 2 | 1 | 0 |
+| Meadow | 3 | 2 | 1 | 0 |
+| Woodland | 2 | 3 | 2 | 1 |
+| Fen | 1 | 2 | 3 | 2 |
+| Saltmarsh | 0 | 1 | 3 | 2 |
+| Dunes | 1 | 2 | 2 | 1 |
+| River | 0 | 2 | 0 | – (carries waste up to 3 squares a turn) |
+| Lake | 0 | 3 | 1 | – (waste sink) |
+| Seagrass | 0 | 1 | 3 | – (each healthy cell removes 0.5 water pollution a turn) |
+| Open sea | 0 | 1 | 0 | – (waste sink) |
 
-## 6. Damages: every route from harm to score
+A land square cleans waste on itself first, then on any river square touching it. Family farms (POL 1), hill farms (POL 1, GRN 1) and conifer plantations (GRN 2, WAT 1) also supply a little, scaled by their own low B.
 
-| Harm | Made by | What it hits | Score effect |
+## 5. Buildings
+
+| Building | Cost | Base | Nature bonus | Other modifiers | Upkeep | Waste | Pressure | Nuisance | Residents |
+|---|---|---|---|---|---|---|---|---|---|
+| Cottages | 2 | 1 | – | – | 0 | 1 | 1 | – | 1 |
+| Tower block | 5 | 3 | – | – | 1 | 2 | 2 | – | 4 |
+| Family farm | 3 | 1 | +POL/2 | −1 per waste token on it | 1 | 1 | 1 | – | – |
+| Hill farm | 2 | 2 | – | −1 per waste token | 1 | 0 | 1 | – | – |
+| Cluck Towers | 5 | 5 | – | −1 per waste token | 2 | 3 | 2 | 2 | – |
+| Conifer plantation | 3 | 2 | – | – | 1 | 0 | 1 | – | – |
+| Holiday park | 4 | 1 | +GRN/2 | −2 if waste within 1; −pollution/5 if sea or lake within 2 | 1 | 1 | 1 | – | – |
+| School | 3 | 1 | – | +1 wellbeing to homes within 3 | 1 | 0 | 1 | – | – |
+| Hospital | 5 | 2 | – | +2 wellbeing to homes within 4 | 2 | 1 | 1 | – | – |
+| Business park | 4 | 2 | – | +1 per home within 2 (max +3) | 1 | 1 | 1 | – | – |
+| Factory | 5 | 6 | – | – | 2 | 3 | 2 | 2 | – |
+| Recycling centre | 3 | 0 | – | removes 3 waste from its own and touching squares | 1 | 0 | 1 | – | – |
+| Harbour | 5 | 5 | – | – | 2 | 2 | 2 | 2 | – |
+| Fishing fleet | 3 | 1 | +WAT/2 | −pollution/5 | 1 | 0 | 2 | – | – |
+| Offshore wind farm | 4 | 3 | – | – | 1 | 0 | 0 | – | – |
+
+Bonuses round down. Farms are Family farm, Hill farm and Cluck Towers (for waste and the heatwave). Homes are Cottages and Tower blocks.
+
+## 6. Happiness
+
+```
+wellbeing (per home, 0 to 10) = base (cottages 4, tower block 3) + GRN received (max 6)
+                                + school bonus + hospital bonus − nuisance (max 4) − waste (max 3)
+H = resident-weighted average wellbeing, minus 0.5 for each of 10, 20, 30, 40 residents (crowding)
+```
+
+Nuisance is 2 for each Cluck Towers, Factory or Harbour within 1. Waste is 1 per token on the home or a square touching it.
+
+## 7. Harms
+
+| Harm | Made by | What it hits | Effect on score |
 |---|---|---|---|
-| **Pressure** | built tiles within 1 (+1 or +2 each), waste on cell (+1), sea pollution ≥ 10 (+1 marine) | nature cell intensity (≥1 light, ≥3 intense) | lower B → lower supply (hidden by the cap); intense ancient → lost for good; intense −1 cleaning; intense seagrass stops cleaning sea and feeding fleets |
-| **Waste tokens** | buildings (table 3) | the cell and cells downhill | +1 pressure; homes −1 wellbeing per token on self + N,E,S,W (max −3); farms −1 GDP per token; holiday park −2 |
-| **Sea pollution** | waste reaching the sea | fleets; holiday parks near sea; all marine cells at ≥ 10 | −1 GDP per 5 pollution; marine pressure |
-| **Lake pollution** | waste reaching a lake | lake supply | −10% per token, never recovers |
-| **Nuisance** | Cluck Towers, factory, harbour | homes within 1 | −2 wellbeing each (max −4) |
-| **Crowding** | residents ≥ 10, 20, 30, 40 | H | −0.5 H per threshold |
-| **Events** | turns 8, 16, 24 | unprotected at-risk tiles | −max(2, 4 × tile GDP) |
+| **Pressure** | buildings within 1; waste on the square; water pollution ≥ 10 (sea and lakes) | nature square's use intensity | lower B, so less supply and less cleaning; intense ancient habitat is lost for good |
+| **Waste tokens** | buildings | the square and everything downhill | +1 pressure; homes −1 wellbeing per token; farms −1 income per token; holiday park −2 |
+| **Water pollution** | waste reaching the sea or a lake | fleets; holiday parks near water; sea and lake squares at ≥ 10 | −1 income per 5 pollution; pressure on seagrass |
+| **Nuisance** | Cluck Towers, factory, harbour | homes within 1 | −2 wellbeing each |
+| **Crowding** | 10, 20, 30, 40 residents | H | −0.5 H per threshold |
+| **Events** | turns 8, 16, 24 | unprotected tiles at risk | −max(£2, 4 × tile GDP) each |
+| **Upkeep** | every building, every turn | cash and score | fixed cost, not helped by happiness |
 
-## 7. What the tables show
+## 8. Restoration
 
-1. **The cap hides almost everything.** The starting cottages receive 6 of every service and H is 10. At the end of greedy games 74% of all received service values are still at the cap *(probe)*. So B, intensity, pressure, habitat choice and restoration rarely change any number that feeds the score. This is the root of most other problems.
-2. **Nature's value is almost all one route: REC + AIR → H → ×1.5.** With both capped, wellbeing is 5 + 3 + 2 = 10. Removing them drops H to about 5 and GDP by a third. That is why REC and AIR dominate "nature's contribution" and why it looks like 50 to 60%.
-3. **FLD and WAT have almost no job.** FLD only acts in events, and it is nearly always ≥ 3, so events hit about 0.3 tiles a game. WAT only costs 1 wellbeing when below 2, which almost never happens.
-4. **Schools and hospitals do nothing while wellbeing is already 10** (it is clamped at 10).
-5. **Every build except the recycling centre (GDP 0) pays back in 1 to 3 turns, and nothing has a running cost.** With one action a turn, the best play is to build every turn *(probe: greedy never passes and restores less than once a game)*. A restoration costs a whole turn and pays back nothing the cap does not already give.
-6. **Harms are too small or too well placed to bite.** Pressure only lowers B (hidden by the cap). Nuisance only reaches homes within 1, which is easy to avoid. Greedy ends with sea pollution around 147 *(probe)*: this zeroes fleets and seaside holiday parks but touches nothing else. Ancient habitat loss (about 6 a game) costs nothing unless an objective asks for it.
-7. **Nature also pays outside the service system**: the holiday park's ancient bonus, the fleet's seagrass bonus and forest schools. These are extra rules to learn and do not show in the counterfactuals.
+One action, costs a turn (and a market discard, or £1 in menu mode). Plant woodland, restore wetland (fen, next to water), sow meadow, rewet peat, or set up a marine reserve (open sea becomes seagrass after 4 turns; protects marine squares within 1). Restoring a farm or plantation demolishes it, which also removes its upkeep. Restored habitat is never ancient again.
 
-## 8. Simplification ideas
+## 9. What each mechanic teaches
 
-In rough order of payoff. These are options to discuss, not decisions; each needs a simulator run.
-
-1. **Fix saturation first.** Everything else is hard to judge until services vary across the board. The simplest option is probably one radius (1) for all services, keeping the cap. It makes "what is next to it" the whole rule, which players can read at a glance. Uncertain: untouched areas may still saturate, so the cap or base values may also need lowering.
-2. **Cut to three services, each with one clear job:**
-   - **Pollination** (POL): farm GDP.
-   - **Green space** (REC + AIR): wellbeing, so H, and holiday parks.
-   - **Water and flood** (WAT + FLD): event protection, and it could *be* the waste-cleaning stat, replacing the separate `cleans` column.
-   This removes two icons, two overlays and a column from every table above, and gives WAT and FLD something to do.
-3. **Give buildings an ongoing cost** (upkeep per turn, or yield that falls without nature). This is what makes restoration worth a turn, and matches the "working landscapes" request in `TODO.md`.
-4. **Simplify wellbeing.** Today it has 8 parts. Base + green space − nuisance − waste would carry the same story. Schools and hospitals could become flat GDP-plus-H buildings, or be cut.
-5. **Fold the special nature bonuses into services** (fleet seagrass bonus, holiday park ancient bonus, forest school), or drop them, so all of nature's value flows through the service counterfactuals.
-6. **Simplify waste sinks.** Lake pollution is a second, permanent pollution store with a small effect; it could merge with sea pollution into one "water pollution" number. River speed and sea clean-up are already in `TODO.md`.
-7. **Make biodiversity count directly**, for example a small score term for intactness or a fixed penalty per ancient cell lost, so the greedy bot's losses cost something without needing an objective.
+| Mechanic | Lesson |
+|---|---|
+| Services come only from the four touching squares | Nature's benefits are local: *where* nature is matters. |
+| Three services, each with a clear job | Different habitats do different things: meadows feed farms, woods and lakes make places pleasant, wetlands clean water and stop floods. |
+| Supply = habitat × B; pressure lowers B | Worn-out nature delivers less. Development next to nature degrades the very services it relies on. |
+| Upkeep, and income that depends on services | A working landscape needs nature to stay profitable; a farm without pollinators can run at a loss. |
+| Happiness multiplies income | Green space is good for people, and happy people make the whole economy work better. |
+| Wetlands clean waste; waste flows downhill | Pollution travels; it is cheapest to stop at the source or beside the river. |
+| Events and water protection | Nature-based defences (saltmarsh, fen, seagrass) protect homes and businesses for free. |
+| Ancient habitat can be lost but never restored | Some losses are permanent. Restoration helps but takes years and never fully replaces the old. |
+| End screen counterfactuals | How much of the economy nature quietly pays for, service by service. |
+| Biodiversity scored apart from GDP | Nature has value beyond money, and looking after it is a goal in its own right. |

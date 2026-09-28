@@ -2,8 +2,8 @@
 // `why` is shown on the title screen when the player picks their objectives.
 export const OBJECTIVES = {
   cleanSeas: {
-    name: 'Clean seas', text: 'Sea pollution 2 or less', kind: 'seaPollutionMax', value: 2,
-    why: 'Fishing and tourism depend on a clean sea.'
+    name: 'Clean waters', text: 'Water pollution 2 or less', kind: 'pollutionMax', value: 2,
+    why: 'Fishing and tourism depend on clean seas and lakes.'
   },
   ancientHeritage: {
     name: 'Ancient heritage', text: 'Keep every ancient habitat', kind: 'keepPrimary',
@@ -54,7 +54,7 @@ export const OBJECTIVES = {
     why: 'Restoration can bring back services that were lost.'
   },
   cleanRivers: {
-    name: 'Clean rivers', text: 'No waste in any river and a clean lake', kind: 'cleanRivers',
+    name: 'Clean rivers', text: 'No waste in any river at the end', kind: 'cleanRivers',
     why: 'Healthy rivers support wildlife, drinking water and recreation.'
   },
   naturePays: {
@@ -62,8 +62,8 @@ export const OBJECTIVES = {
     why: "Much of the economy quietly depends on nature's services."
   },
   coastGuard: {
-    name: 'Coast guard', text: 'At least 2 coastal tiles, all with flood protection 3+', kind: 'coastGuard',
-    radius: 2, service: 'FLD', min: 3, atLeast: 2,
+    name: 'Coast guard', text: 'At least 2 coastal tiles, all with water and flood protection 3+', kind: 'coastGuard',
+    radius: 2, service: 'WAT', min: 3, atLeast: 2,
     why: 'Saltmarsh, dunes and seagrass soften storm waves for free.'
   }
 };

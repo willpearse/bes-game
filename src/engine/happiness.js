@@ -1,29 +1,17 @@
 // Wellbeing and happiness (section 9, step 8).
 import { CONFIG } from '../data/config.js';
 import { BUILDINGS, WELLBEING } from '../data/buildings.js';
-import { within, ortho, isBuilt, isNature, isResidential, building, round1 } from './grid.js';
+import { within, ortho, isBuilt, isResidential, building, round1 } from './grid.js';
 import { wasteTokensAt } from './waste.js';
 
 const cfg = (state) => state.config ?? CONFIG;
 const defaultRecv = (cell) => cell.received;
 
-export function isForestSchool(state, cell) {
-  const need = BUILDINGS.school.wellbeingBonus.boost.forestSchool;
-  return ortho(state, cell.row, cell.col).filter(isNature).length >= need;
-}
-
-// Best bonus from buildings with a wellbeingBonus of the given key (school or hospital).
-export function bestBonus(state, cell, key, recv = defaultRecv) {
+// Best bonus from buildings with a wellbeingBonus of the given key (school or hospital) within its radius.
+export function bestBonus(state, cell, key) {
   const rule = BUILDINGS[key].wellbeingBonus;
-  let best = 0;
-  for (const c of within(state, cell.row, cell.col, rule.radius)) {
-    if (!isBuilt(c) || c.building !== key) continue;
-    let boosted = false;
-    if (rule.boost.forestSchool != null) boosted = isForestSchool(state, c);
-    if (rule.boost.service) boosted = (recv(c)?.[rule.boost.service] ?? 0) >= rule.boost.min;
-    best = Math.max(best, boosted ? rule.boostedAmount : rule.amount);
-  }
-  return best;
+  const near = within(state, cell.row, cell.col, rule.radius).some((c) => isBuilt(c) && c.building === key);
+  return near ? rule.amount : 0;
 }
 
 export function wellbeingParts(state, cell, recv = defaultRecv) {
@@ -39,11 +27,9 @@ export function wellbeingParts(state, cell, recv = defaultRecv) {
   for (const n of ortho(state, cell.row, cell.col)) tokens += wasteTokensAt(state, n);
   return {
     base: b.wellbeingBase,
-    rec: Math.min(r.REC, W.recCap) / W.recDivisor,
-    air: Math.min(r.AIR, W.airCap) / W.airDivisor,
-    water: r.WAT < W.lowWaterThreshold ? -W.lowWaterPenalty : 0,
-    school: bestBonus(state, cell, 'school', recv),
-    hospital: bestBonus(state, cell, 'hospital', recv),
+    green: Math.min(r.GRN, W.greenCap) / W.greenDivisor,
+    school: bestBonus(state, cell, 'school'),
+    hospital: bestBonus(state, cell, 'hospital'),
     nuisance: 0 - Math.min(nuisance, W.nuisanceMax),
     waste: 0 - Math.min(tokens * W.wastePenaltyPer, W.wastePenaltyMax)
   };
@@ -51,7 +37,7 @@ export function wellbeingParts(state, cell, recv = defaultRecv) {
 
 export function wellbeing(state, cell, recv = defaultRecv) {
   const p = wellbeingParts(state, cell, recv);
-  const w = p.base + p.rec + p.air + p.water + p.school + p.hospital + p.nuisance + p.waste;
+  const w = p.base + p.green + p.school + p.hospital + p.nuisance + p.waste;
   return Math.max(WELLBEING.min, Math.min(WELLBEING.max, w));
 }
 

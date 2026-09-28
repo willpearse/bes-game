@@ -11,9 +11,8 @@ import { cellAt } from '../engine/grid.js';
 import { markPlayed, natureAnimations, setNatureAnimations } from '../ui/prefs.js';
 import { deliveries } from '../engine/services.js';
 import { RESTORATIONS } from '../data/restorations.js';
-import { SERVICES } from '../data/services.js';
+import { SERVICES, SERVICE_KEYS } from '../data/services.js';
 
-const SERVICE_LIST = ['POL', 'WAT', 'FLD', 'AIR', 'REC'];
 
 const lerpColour = (a, b, t) => {
   const c = Phaser.Display.Color.Interpolate.ColorWithColor(
@@ -61,7 +60,7 @@ export class Game extends Phaser.Scene {
     this.targetG = this.add.graphics().setDepth(5);
     this.hoverG = this.add.graphics().setDepth(5);
     this.arrowG = this.add.graphics().setDepth(4);
-    this.sourceIcons = SERVICE_LIST.map((k) => this.add.image(0, 0, SERVICES[k].icon).setScale(0.6).setDepth(8).setVisible(false));
+    this.sourceIcons = SERVICE_KEYS.map((k) => this.add.image(0, 0, SERVICES[k].icon).setScale(0.6).setDepth(8).setVisible(false));
     this.hoverLabel = text(this, 0, 0, '', { size: 13, bold: true, color: '#ffffff' }).setDepth(8).setVisible(false);
     this.hoverLabel.setBackgroundColor('#1b1b24ee').setPadding(4, 2, 4, 2);
     this.animLayer = this.add.container(0, 0).setDepth(9);
@@ -142,7 +141,7 @@ export class Game extends Phaser.Scene {
       if (ov === 'BIO') {
         colour = lerpColour(0x2a1f2a, OVERLAY_COLOURS.BIO, cell.B);
         alpha = 0.78;
-      } else if (['POL', 'WAT', 'FLD', 'AIR', 'REC'].includes(ov)) {
+      } else if (SERVICE_KEYS.includes(ov)) {
         const val = cell.supply?.[ov] ?? 0;
         colour = lerpColour(0x1b1b24, OVERLAY_COLOURS[ov], Math.min(1, val / 3));
         alpha = 0.8;
@@ -243,7 +242,7 @@ export class Game extends Phaser.Scene {
         // Icons from the same square sit side by side.
         const same = pv.sources.filter((o) => o.row === src.row && o.col === src.col);
         const k = same.indexOf(src);
-        const ic = this.sourceIcons[SERVICE_LIST.indexOf(src.service)];
+        const ic = this.sourceIcons[SERVICE_KEYS.indexOf(src.service)];
         ic.setPosition(from.x + (k - (same.length - 1) / 2) * 16, from.y - 12).setVisible(true);
       });
     }
@@ -251,11 +250,11 @@ export class Game extends Phaser.Scene {
     const cell = cellAt(s.state, h.row, h.col);
     let label = '';
     if (s.overlay === 'BIO') label = `B ${cell.B.toFixed(2)}`;
-    else if (['POL', 'WAT', 'FLD', 'AIR', 'REC'].includes(s.overlay)) {
+    else if (SERVICE_KEYS.includes(s.overlay)) {
       label = `supplies ${fmt1(cell.supply[s.overlay])}`;
       if (cell.kind === 'built') label += `\nreceives ${fmt1(cell.received[s.overlay])}`;
     } else if (s.overlay === 'WASTE') label = `waste ${wasteTokensAt(s.state, cell)}\nheight ${cell.elevation}`;
-    if (pv) label = `${label ? label + '\n' : ''}${pv.gdp ? `+£${pv.gdp}/turn` : ''}`.trim();
+    if (pv) label = `${label ? label + '\n' : ''}${pv.gdp ? `${pv.gdp < 0 ? '−' : '+'}£${Math.abs(pv.gdp)}/turn` : ''}`.trim();
     if (label) {
       this.hoverLabel.setText(label).setVisible(true);
       const lx = Math.min(x + TILE + 4, BOARD_X + BOARD_SIZE - this.hoverLabel.width);
@@ -278,7 +277,9 @@ export class Game extends Phaser.Scene {
     const gdp = log.find((l) => l.type === 'gdp');
     for (const e of gdp?.earnings ?? []) {
       const c = cellCentre(e.row, e.col);
-      const t = text(this, c.x, c.y - 10, `+£${fmt1(e.amount).replace(/\.0$/, '')}`, { size: 14, bold: true, color: UI.gold, origin: [0.5, 0.5] });
+      const sign = e.amount < 0 ? '−' : '+';
+      const t = text(this, c.x, c.y - 10, `${sign}£${fmt1(Math.abs(e.amount)).replace(/\.0$/, '')}`,
+        { size: 14, bold: true, color: e.amount < 0 ? UI.bad : UI.gold, origin: [0.5, 0.5] });
       t.setStroke('#000000', 3);
       this.animLayer.add(t);
       this.tweens.add({ targets: t, y: c.y - 44, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
@@ -336,7 +337,7 @@ export class Game extends Phaser.Scene {
           const t = p.t;
           const wobble = bee ? Math.sin(t * Math.PI * 6) * 3 : 0;
           icon.setPosition(a.x + (b.x - a.x) * t + wobble, a.y + (b.y - a.y) * t - Math.sin(t * Math.PI) * lift);
-          if (d.service === 'AIR') icon.setRotation(Math.sin(t * Math.PI * 2) * 0.5);
+          if (d.service === 'GRN') icon.setRotation(Math.sin(t * Math.PI * 2) * 0.5);
         },
         onComplete: () => {
           this.tweens.add({ targets: icon, scale: 0.8, alpha: 0, duration: 200, onComplete: () => icon.destroy() });

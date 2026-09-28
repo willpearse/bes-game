@@ -67,9 +67,9 @@ export class Title extends Phaser.Scene {
     text(this, 64, 128, 'Plan a corner of Britain. Grow the economy. Find out how much of it nature pays for.', { size: 15, color: UI.text });
 
     text(this, 64, 222,
-      'Each turn, build one tile or restore some nature. Built tiles earn money, and much of it\n' +
-      'depends on pollinators, clean water, flood defences, clean air and lovely places to walk.\n' +
-      'Development puts pressure on nature. Waste flows downhill into rivers and the sea.\n' +
+      'Each turn, build one tile or restore some nature. Built tiles earn money and cost upkeep.\n' +
+      'What they earn depends on the nature touching them: pollinators for farms, green space for\n' +
+      'happy residents, wetlands that clean water and hold back floods. Waste flows downhill to the sea.\n' +
       'Three events will test whether nature is protecting you. 24 turns, about 10 to 15 minutes.',
       { size: 14, color: UI.text, lineSpacing: 5 });
 

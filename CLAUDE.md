@@ -2,10 +2,19 @@
 
 Guide for future sessions working on **Green and Pleasant**: a single-player, browser-based pixel-art tile-placement game about the value of nature to a local economy, set in Great Britain. The designer's original spec is not in the repo; `NOTES.md` records how it was interpreted and every later design change.
 
+## Purpose
+
+The game has two goals, and every design change should serve both:
+
+1. **Be fun to play**: clear choices, visible consequences, an economy that is satisfying to grow.
+2. **Teach how ecosystem services benefit people**: which nature does what for whom, that development wears it down, and that looking after it pays back.
+
+When a rule is fun but teaches the wrong lesson, or teaches the right lesson but is dull or hard to read, it needs rethinking. Prefer fewer, clearer mechanics that a player can see on the board over detailed ones they cannot. `MECHANICS.md` lists what each mechanic is meant to teach.
+
 ## Read first
 
 - `NOTES.md`: what was built, every rule interpretation (numbered), designer changes, balance results. Add to it when you interpret or change a rule.
-- `MECHANICS.md`: one-page summary of how buildings, habitats, services and harms reach the score, with balance findings.
+- `MECHANICS.md`: one-page summary of the current rules: how buildings, habitats, services and harms reach the score, and what each mechanic teaches. Keep it up to date when rules change.
 - `TODO.md`: designer requests for later, balance issues, open questions. Add new open questions here, not in NOTES.
 - `README.md`: how to run, variants, controls, deploying.
 
@@ -42,10 +51,10 @@ src/
     state.js           createGame(), map parsing, recompute(), objective offer/choice
     actions.js         legalTargets(), preview(), takeTurn(), endGame(), cloneState(), placement rules
     intensity.js       pressure -> use intensity, B (PREDICTS), Primary loss, succession, intactness
-    services.js        supply, services received, topContributor(), deliveries() for animations
+    services.js        supply, services received (4 touching squares), topContributor(), deliveries()
     happiness.js       wellbeing and happiness
-    gdp.js             tile GDP, happiness multiplier, counterfactuals (noNature, without[s])
-    waste.js           token waste flow (downhill, rivers, sinks) and simple mode
+    gdp.js             tile income and upkeep, happiness multiplier, counterfactuals (noNature, without[s])
+    waste.js           token waste flow (downhill, rivers, sinks into water pollution), cleaning, simple mode
     events.js          events: tiles at risk, protection, damage, reports
     objectives.js      objective evaluation
     market.js          stage piles, market shifting, menu unlocks
@@ -70,6 +79,8 @@ public/                favicon, web app manifest, home-screen icons
 ## How a turn works
 
 `takeTurn` applies the action, then in order: market update, intensity, Primary loss, succession, supply, services received, happiness, GDP (plus counterfactuals), waste, event, advance turn. The `log` it returns drives all animations and messages (GDP floats, waste token moves, events, toasts).
+
+There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
 
 ## Display notes
 

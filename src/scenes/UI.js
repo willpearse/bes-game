@@ -21,7 +21,7 @@ import { isFirstGame, hintsSeen, markHintSeen } from '../ui/prefs.js';
 const HINTS = {
   place: 'Pick a tile from the market, then click a gold square on the map to build it.',
   overlays: 'Try the buttons along the bottom: they show where each of nature\'s services comes from.',
-  waste: 'Waste flows downhill into rivers and the sea. Fens and saltmarsh clean it up; too much harms homes, farms and fishing.',
+  waste: 'Waste flows downhill into rivers, lakes and the sea. Wetlands with a strong water service (fen, peat, saltmarsh) clean it up, including the river beside them.',
   restore: 'Restoring nature is a valid turn. Switch to Restore, pick an action, and click a square.'
 };
 
@@ -99,7 +99,7 @@ export class UI extends Phaser.Scene {
     tipZone(318, 4, 150, 34, () => 'Score: total GDP earned so far, after event damage.');
     tipZone(468, 4, 100, 34, () => 'Happiness (0 to 10): the average wellbeing of residents.\nAbove 5 it boosts GDP; below 5 it drags it down.');
     tipZone(568, 4, 120, 34, () => 'Biodiversity intactness: average nature value (B) across the land.\nIt started at ' + Math.round(this.session.state.stats.startIntactness * 100) + '%.');
-    tipZone(690, 4, 170, 34, () => 'Sea pollution: waste that has reached the sea.\nIt hurts fishing and holiday parks. Healthy seagrass cleans it slowly.');
+    tipZone(690, 4, 170, 34, () => 'Water pollution: waste that has reached the sea or a lake.\nIt hurts fishing and holiday parks near water. Healthy seagrass cleans it slowly;\nwetlands and woods by the river stop it getting there.');
     tipZone(876, 4, 400, 70, () => evaluateObjectives(this.session.state)
       .map((o) => `${o.met ? '✔ On track' : '○ Not yet'}: ${o.name}\n${o.text} (now ${o.progress})\n${OBJECTIVES[o.id].why}`).join('\n\n'));
     tipZone(10, 40, 860, 34, () => {
@@ -116,7 +116,7 @@ export class UI extends Phaser.Scene {
     this.hudHappy.setText(`${fmt1(st.happiness)}`);
     this.hudFace.setTexture(st.happiness >= 6.5 ? 'face_happy' : st.happiness >= 4 ? 'face_ok' : 'face_sad');
     this.hudBio.setText(`${Math.round(intactness(st) * 100)}%`);
-    this.hudSea.setText(`Sea ${fmt1(st.seaPollution).replace(/\.0$/, '')}`);
+    this.hudSea.setText(`Pollution ${fmt1(st.pollution).replace(/\.0$/, '')}`);
     const ev = upcomingEvent(st);
     if (ev) {
       const left = ev.turnsLeft;
@@ -181,7 +181,7 @@ export class UI extends Phaser.Scene {
 
   buildingTip(id) {
     const b = BUILDINGS[id];
-    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn. Waste ${b.waste}.`];
+    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn, upkeep £${b.upkeep ?? 0} a turn. Waste ${b.waste}.`];
     if (b.residents) lines.push(`Homes for ${b.residents} resident${b.residents > 1 ? 's' : ''}.`);
     if (b.pressure) lines.push(`Puts pressure ${b.pressure} on nature next to it.`);
     if (b.nuisance) lines.push('Homes next to it are less happy.');
@@ -242,7 +242,7 @@ export class UI extends Phaser.Scene {
           c.info.setText('to discard');
         } else {
           c.price.setText(`£${b.cost + extra}`);
-          c.info.setText(`GDP ${gdpLabel(id)}\nWaste ${b.waste}`);
+          c.info.setText(`GDP ${gdpLabel(id)}\nUpkeep ${b.upkeep ?? 0}, waste ${b.waste}`);
         }
         const choice = restoring ? { type: 'restore', restoration: 'plantWoodland', slot: i } : { type: 'build', slot: i };
         const affordable = s.canAfford(choice);
@@ -377,7 +377,7 @@ export class UI extends Phaser.Scene {
       }
       const lines = [];
       lines.push(`On: ${habitatName(cell.habitat)}${cell.kind === 'built' ? ` (${BUILDINGS[cell.building].name})` : ''}`);
-      if (building) lines.push(`Projected GDP: £${pv.gdp} a turn`);
+      if (building) lines.push(`Projected GDP: £${pv.gdp} a turn, after upkeep`);
       const d = pv.gdpDelta;
       lines.push(`Change in region's GDP per turn: ${d >= 0 ? '+' : ''}£${fmt1(d)}`);
       const hd = pv.happinessDelta;
@@ -404,7 +404,7 @@ export class UI extends Phaser.Scene {
       this.inspSprite.setTexture(`bld_${cell.building}`).setVisible(true);
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
       lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
-      lines.push(`GDP last turn: £${cell.gdp}${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
+      lines.push(`GDP last turn: £${cell.gdp} after £${b.upkeep ?? 0} upkeep${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
       lines.push(b.tip);
       this.setServices('Services received from nearby nature:', cell.received);
     } else {
@@ -413,7 +413,6 @@ export class UI extends Phaser.Scene {
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
       lines.push(`Pressure ${cell.pressure}.  Waste here: ${wasteTokensAt(st, cell)}.  Height ${cell.elevation}`);
       if (cell.restored) lines.push(`Restored ${cell.age} turn${cell.age === 1 ? '' : 's'} ago.`);
-      if (cell.habitat === 'lake' && cell.lakePollution) lines.push(`Lake pollution: ${cell.lakePollution}`);
       if (cell.landUse === 'primary') lines.push('Ancient habitat: if it is built on or worn out, it can never come back.');
       this.setServices('Services it supplies to tiles nearby:', cell.supply);
     }

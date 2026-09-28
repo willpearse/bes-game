@@ -9,13 +9,13 @@ All six milestones are in place.
 1. **Skeleton.** Phaser 4.2.1 (latest stable) + Vite 8 + Vitest 5, set up by hand to match the official template's JS/Vite layout. The board renders from `src/data/maps/estuary.json`. A 24-turn game runs from the title screen to the end screen.
 2. **Nature.** PREDICTS classes and intensity, `B`, service supply and receipt, wellbeing and happiness, every GDP formula, inspector, overlays, placement preview.
 3. **Market and restoration.** Market mode with seeded stage piles, menu mode, all five restoration actions, succession, Primary loss, marine reserves.
-4. **Waste.** Token mode with downhill flow, river flow of up to 3 steps, sinks, riparian cleaning and recycling. Token moves are animated from the turn log. Sea and lake pollution. Simple mode.
+4. **Waste.** Token mode with downhill flow, river flow of up to 3 steps, sinks, riparian cleaning and recycling. Token moves are animated from the turn log. Sea and lake pollution. Simple mode. (Later simplified: see 36 to 43.)
 5. **Events, objectives, end screen.** Includes counterfactuals (`noNature`, `without[s]`, event damage avoided) and local top-10 high scores for each variant combination.
 6. **Tuning tools.** Title-screen variant settings, URL flags, debug view (`D`), first-play hints, `npm run simulate`.
 
 Order of work: I did not finish and run each milestone in turn as section 1 asks. I wrote the whole rules engine and its tests first, then the Phaser scenes. The engine had to be complete before the UI could be tested properly. The git history shows the engine and UI as separate commits, not one commit per milestone.
 
-Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They cover every item in section 17. There are no automated UI tests. I checked the UI by driving it in headless Chromium and looking at screenshots.
+Tests: 95 Vitest tests, engine line coverage 98.7% (`npm run coverage`). They cover every item in section 17. There are no automated UI tests. I checked the UI by driving it in headless Chromium and looking at screenshots.
 
 ## Dependencies
 
@@ -50,19 +50,19 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 
 ### Wellbeing, GDP and counterfactuals
 
-15. **"Within N" excludes the cell itself everywhere**, including the Holiday park's "waste within 1" and "Primary within 2".
+15. **"Within N" excludes the cell itself everywhere**, including the Holiday park's "waste within 1".
 16. **Happiness and crowding.** Population-pressure penalties apply after rounding H, and H is rounded again afterwards.
-17. **Nature's contribution is a lower bound.** `noNature` and `without[s]` only zero the *received services* (and recompute happiness, including a hospital losing its AIR boost). Some GDP depends on nature directly and is not removed: the Fishing fleet's seagrass bonus, the Holiday park's ancient-habitat bonus, and forest schools. So nature's real contribution is somewhat higher than shown.
+17. **Nature's contribution.** `noNature` and `without[s]` zero the *received services* and recompute income and happiness. Since the simplification (40), every nature bonus to GDP goes through a service, so nothing is left out. Event damage avoided is reported separately and is not part of the counterfactuals.
 18. **endGame happiness mode.** The final multiplier applies to (GDP − event damage), as in the first sentence of section 13. Each counterfactual is multiplied by the happiness it would have had on the final board.
-19. **Event damage** uses the tile's raw GDP this turn, before the happiness multiplier. Score can go below zero; cash cannot.
+19. **Event damage** uses the tile's net GDP this turn (income minus upkeep), before the happiness multiplier, with the £2 minimum. Score can go below zero; cash cannot.
 20. **Event protector.** The protector is the cell with the highest supply of the protecting service within that service's radius (ties go to the first cell in row order). Messages are grouped by habitat or building name.
 21. **Event reveal.** The HUD shows the first scheduled event at or after the current turn. This gives exactly "one stage ahead" with the default turns, and still works if `eventTurns` changes.
 
 ### Waste
 
 22. **River flow.** In step 1, every token moves. In steps 2 and 3, only tokens on river cells move. A token that enters a river from land in step 1 keeps going for steps 2 and 3.
-23. **Cleaning order** within step 10.2 is: each nature cell cleans itself, then riparian buffers, then recycling centres (own cell first, then N, E, S, W).
-24. **Lake pollution never goes down.** The spec gives no recovery rule.
+23. **Cleaning order** within step 10.2 is: each nature land cell (in row order) cleans its own cell, then touching river cells (N, E, S, W), up to its capacity; then recycling centres (own cell first, then N, E, S, W).
+24. **Water pollution** is one number for the sea and lakes together (see 42). Only healthy seagrass lowers it.
 25. **Simple mode.** The polluting tile itself counts as "within 1" of itself, so a Factory's own cell holds a token for its effects. Recycling centres add their 3 to the total clean capacity (otherwise they would do nothing in simple mode). In simple mode, tokens are only drawn in the Waste overlay.
 
 ### Objectives
@@ -79,55 +79,64 @@ Tests: 83 Vitest tests, engine line coverage 98.9% (`npm run coverage`). They co
 29. **Worn and recovering looks** are derived in `src/art/textures.js`. Light and intense use turn soft, noise-shaped patches of vegetation into bare ground (about 20% and 50%). Young and intermediate stages thin the vegetation the same way; woodland has hand-drawn saplings and small trees instead. Built tiles stand on the intense-use version of their habitat.
 30. **Sharp text.** The canvas is drawn at twice the logical size (2560×1440; `RES` in `src/ui/layout.js`), and every scene's camera zooms ×2. Text is rendered at high resolution with smooth filtering. Phaser's pixel-art mode sets `image-rendering: pixelated` on the canvas, which made text speckled whenever the browser shrank the canvas; `main.js` sets it back to smooth. Sprites still look crisp, because inside the canvas each sprite pixel covers exactly 3×3 canvas pixels. The font is the system sans-serif (Trebuchet MS / Segoe UI / Verdana).
 31. **Full screen.** A button at the bottom right (and on the title screen) toggles full screen where the browser allows it (desktop, Android). iPhones do not allow it for web pages, so the page is also an installable web app (`public/manifest.webmanifest`, Apple home-screen tags, icons): "Add to Home Screen" opens it without browser bars. The title screen explains this on touch devices without full-screen support. In portrait on a small screen, a banner suggests turning the phone sideways.
-32. **Nature at work animations.** Each turn, up to 10 small icons fly from the nature square that supplies the most of a service to a tile that uses it (`deliveries()` in `engine/services.js`; `uses` in `data/buildings.js`): pollination to family farms, recreation, clean air and water to homes, recreation to holiday parks, clean air to hospitals. Bees wobble and leaves spin. In events, shields pop up over protected tiles with a line back to the protector, and hit tiles flash red. Placement previews draw arrows from each supplying square. On by default; switch on the title screen or with N.
+32. **Nature at work animations.** Each turn, up to 10 small icons fly from the nature square that supplies the most of a service to a tile that uses it (`deliveries()` in `engine/services.js`; `uses` in `data/buildings.js`): pollination to family farms, green space to homes and holiday parks, water to fishing fleets. Bees wobble and leaves spin. In events, shields pop up over protected tiles with a line back to the protector, and hit tiles flash red. Placement previews draw arrows from each supplying square. On by default; switch on the title screen or with N.
 33. **Restore icons** appear on the Restore buttons (short labels, full name in the tooltip), as faint ghosts on every square an action can be used on, and in the inspector preview.
 34. **Real-time animation.** Phaser's default smooths frame times to 60 fps, which slowed every timer and animation when the frame rate dropped (turns took several seconds to finish in a software-rendered browser). `fps.smoothStep` is off so timings stay in real time.
 35. Hints show on the first game only, at most one per turn: how to place, overlays (after the first build), waste (turn 3+), restoring (turn 5+).
 
+### Simplified mechanics (designer's change)
+
+The designer asked for suggestions 1 to 6 of the first `MECHANICS.md` to be made (not 7: biodiversity stays out of GDP). The aim is fewer mechanics, each with one clear job the player can see on the board, so the game teaches which nature does what.
+
+36. **Services reach the four touching squares.** A built tile receives each service from its N, E, S and W squares only (still capped at 6). Radius 1 with diagonals (8 squares) was tried first; the starting cottages still hit the cap for every service, so the four-square rule was chosen. Pressure still counts all 8 squares around a building.
+37. **Three services instead of five.** POL (pollination and pest control) is unchanged. REC and AIR became GRN (green space and clean air). WAT and FLD became WAT (clean water and flood protection). Habitat values were merged by hand, roughly the average of the two old values rounded towards the more important role (for example dunes GRN 2 from REC 3 and AIR 0; saltmarsh and seagrass WAT 3 because they are strong flood and water habitats). Events that used FLD or AIR now use WAT or GRN.
+38. **Cleaning comes from the water service.** A land nature cell cleans waste equal to its WAT supply (habitat WAT × B), rounded down. This replaces the separate `cleans` column, the "−1 at intense use" rule and the riparian list: any land cell with a strong water service cleans the river beside it. Rounding down means only wetlands and woods clean (meadow, heath and moorland clean 0), which keeps the lesson "wetlands clean water" clear. Worn or young habitat cleans less because its B is lower.
+39. **Upkeep.** Every building has an `upkeep` cost taken off its GDP every turn. Income (base plus bonuses minus penalties) still never goes below 0, but net GDP can, so a farm with no pollinators or a fleet in a polluted sea can lose money. The happiness multiplier applies to income only, not upkeep. Cash still never goes below 0. Upkeep values are first guesses: 0 for cottages, 1 for most tiles, 2 for the big earners and the hospital.
+40. **Special nature bonuses folded into services.** The Fishing fleet now earns +WAT/2 (seagrass has WAT 3) instead of +1 per seagrass within 2. The Holiday park lost its +1 for ancient habitat within 2 (ancient habitat already supplies more GRN, because B is 1.0). Forest schools and the hospital's clean-air boost are gone.
+41. **Simpler wellbeing.** Wellbeing = base (cottages 4, tower block 3) + GRN received (max 6) + school (+1 if one is within 3) + hospital (+2 if one is within 4) − nuisance − waste, clamped to 0 to 10. The low-water penalty is gone.
+42. **One water pollution number.** Waste reaching the sea or a lake adds to `state.pollution` (was `seaPollution`, plus a separate `lakePollution` per lake cell that reduced lake supply and never recovered). At 10 or more, sea and lake cells gain 1 pressure. The Holiday park penalty applies if the sea or a lake is within 2. The Clean seas objective is now "Clean waters" (pollution 2 or less), and Clean rivers no longer checks the lake.
+43. **Biodiversity is not GDP.** Intactness and ancient habitat still have no direct effect on GDP. They are shown on the HUD and end screen and rewarded by objectives, which is how the game scores them.
+
 ## Balance observations (placeholder numbers)
 
-From `npm run simulate -- --games 500` (seeds 1 to 500, default variant):
+From `npm run simulate -- --games 500` (seeds 1 to 500, default variant), after the simplification (36 to 43):
 
 ```
-random bot (5.2 s)
-  Score (£)                  mean     401.9  sd    103.4  min    156.5  median    398.4  max    735.1
-  GDP after damage (£)       mean     350.2  sd    100.4  min    106.5  median    352.2  max    685.1
-  Nature's share of GDP      mean     49.6%  sd     7.9%  min    30.3%  median    48.8%  max    72.8%
-    POL contribution (£)     mean      26.0  sd     36.3  min      0.0  median      0.0  max    168.1
-    WAT contribution (£)     mean      22.6  sd      9.1  min      0.0  median     22.7  max     50.4
-    FLD contribution (£)     mean       0.0  sd      0.0  min      0.0  median      0.0  max      0.0
-    AIR contribution (£)     mean      49.9  sd     18.4  min      0.4  median     49.8  max    108.8
-    REC contribution (£)     mean      87.8  sd     35.7  min     15.0  median     83.4  max    240.4
-  Event hits (tiles)         mean       0.2  sd      0.4  min      0.0  median      0.0  max      2.0
-  Event damage (£)           mean       1.2  sd      3.0  min      0.0  median      0.0  max     16.0
-  Damage avoided (£)         mean      55.1  sd     25.8  min      8.0  median     52.0  max    146.0
-  Primary cells lost         mean       0.9  sd      1.2  min      0.0  median      1.0  max      7.0
-  Intactness at end          mean     80.3%  sd     2.3%  min    73.0%  median    80.2%  max    86.8%
-  Objectives met             mean       1.0  sd      0.7  min      0.0  median      1.0  max      2.0
+random bot (3.7 s)
+  Score (£)                  mean     205.7  sd     59.1  min     69.7  median    199.4  max    418.6
+  GDP after damage (£)       mean     173.9  sd     52.3  min     39.2  median    170.0  max    368.6
+  Nature's share of GDP      mean     54.9%  sd    11.3%  min    30.9%  median    53.9%  max    93.9%
+    POL contribution (£)     mean      13.1  sd     19.4  min      0.0  median      0.0  max     95.4
+    GRN contribution (£)     mean      93.8  sd     28.3  min     25.7  median     92.0  max    181.1
+    WAT contribution (£)     mean       5.9  sd     14.0  min      0.0  median      0.0  max     74.1
+  Event hits (tiles)         mean       4.5  sd      2.2  min      0.0  median      4.0  max     13.0
+  Event damage (£)           mean      21.0  sd     12.9  min      0.0  median     18.0  max     70.0
+  Damage avoided (£)         mean      20.3  sd     11.5  min      0.0  median     20.0  max     70.0
+  Primary cells lost         mean       0.8  sd      1.1  min      0.0  median      0.0  max      5.0
+  Intactness at end          mean     79.8%  sd     2.5%  min    72.2%  median    79.7%  max    86.8%
+  Objectives met             mean       0.6  sd      0.7  min      0.0  median      1.0  max      2.0
 
-greedy bot (428.7 s)
-  Score (£)                  mean    1213.4  sd    109.6  min    905.1  median   1217.1  max   1524.1
-  GDP after damage (£)       mean    1160.8  sd    104.7  min    844.5  median   1168.4  max   1440.7
-  Nature's share of GDP      mean     61.1%  sd     3.7%  min    47.9%  median    61.4%  max    71.5%
-    POL contribution (£)     mean     253.9  sd     58.2  min     51.9  median    258.8  max    387.9
-    WAT contribution (£)     mean      64.1  sd     13.2  min     18.0  median     65.3  max     93.2
-    FLD contribution (£)     mean       0.0  sd      0.0  min      0.0  median      0.0  max      0.0
-    AIR contribution (£)     mean     169.4  sd     24.1  min    118.0  median    166.6  max    246.4
-    REC contribution (£)     mean     320.8  sd     45.0  min    201.9  median    322.9  max    423.3
-  Event hits (tiles)         mean       0.3  sd      0.5  min      0.0  median      0.0  max      3.0
-  Event damage (£)           mean       2.2  sd      4.6  min      0.0  median      0.0  max     40.0
-  Damage avoided (£)         mean     140.6  sd     44.2  min     38.0  median    142.0  max    270.0
-  Primary cells lost         mean       6.3  sd      1.5  min      2.0  median      7.0  max     11.0
-  Intactness at end          mean     67.7%  sd     1.4%  min    63.9%  median    67.6%  max    72.0%
-  Objectives met             mean       1.1  sd      0.7  min      0.0  median      1.0  max      2.0
+greedy bot (257.5 s)
+  Score (£)                  mean     607.7  sd     79.6  min    392.3  median    608.9  max    838.7
+  GDP after damage (£)       mean     593.0  sd     77.6  min    385.7  median    594.2  max    788.7
+  Nature's share of GDP      mean     66.9%  sd     6.8%  min    51.8%  median    66.3%  max    86.4%
+    POL contribution (£)     mean     172.0  sd     38.2  min     41.1  median    175.0  max    273.3
+    GRN contribution (£)     mean     312.0  sd     35.8  min    213.4  median    311.1  max    418.3
+    WAT contribution (£)     mean      13.5  sd     12.3  min      0.0  median     13.3  max     49.8
+  Event hits (tiles)         mean       9.7  sd      4.1  min      1.0  median      9.0  max     22.0
+  Event damage (£)           mean      62.4  sd     28.9  min      4.0  median     58.0  max    154.0
+  Damage avoided (£)         mean      45.3  sd     17.9  min      6.0  median     44.0  max    120.0
+  Primary cells lost         mean       6.0  sd      1.5  min      2.0  median      6.0  max     10.0
+  Intactness at end          mean     67.2%  sd     1.7%  min    62.9%  median    67.2%  max    71.7%
+  Objectives met             mean       0.3  sd      0.5  min      0.0  median      0.0  max      2.0
 ```
 
-What stands out:
+What stands out, compared with the five-service version:
 
-- **The service cap saturates almost everywhere.** A tile surrounded by mature nature gets 20 or more units of most services within radius 2, so nearly every tile receives the cap of 6 for all five services. The starting cottages receive 6.0 of everything, and happiness starts at 10. Services therefore rarely separate a good spot from a bad one until the map is heavily built up. Options: lower base values, divide supply by the number of cells in range, add distance decay, or raise the cap and lower the per-cell values.
-- **Flood protection earns £0 in the counterfactuals**, because no GDP formula uses FLD; it only matters in events. And because FLD is usually ≥ 3, events rarely hit anything (on average 0.2 to 0.3 tiles hit per game). So "damage avoided" is the only place FLD shows up.
-- **Wetland county is met from the start** on the estuary map: it has 4 fen cells and 3 peat bog cells.
-- **The greedy bot scores about 3 times as much as the random bot** (£1,213 against £402) and loses about 6 ancient cells a game, against about 1 for the random bot. Chasing GDP visibly costs biodiversity, which fits the design intent.
-- Nature's share of GDP is about 50 to 60%. That seems a good headline number, but it is mostly Recreation and Air, largely because of the cap effect above.
+- **Services now vary across the board.** In a 10-game greedy probe, about 1% of received values hit the cap at the end (about 75% before). The starting cottages receive about 4.8 green space, and happiness starts at 8.8 rather than 10. Greedy games dip to about 6.5 mid-game.
+- **Events now matter.** On average 4.5 (random) and 9.7 (greedy) tiles are hit a game, against 0.2 to 0.3 before. Water protection shows up mainly as damage avoided, which is outside the counterfactuals.
+- **Scores are lower** (greedy about £608, random about £206), mostly because of upkeep. The greedy bot still scores about 3 times the random bot and loses about 6 ancient cells a game.
+- **Nature's share of GDP** is about 55% (random) to 67% (greedy), mostly green space through happiness, then pollination through farms.
+- Water pollution is still high by the end of greedy games (see the waste item in `TODO.md`).
 
 Open questions and future work are in `TODO.md`.

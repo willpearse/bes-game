@@ -1,9 +1,9 @@
 // Service supply and services received (section 9, steps 6 and 7).
 import { CONFIG } from '../data/config.js';
-import { SERVICES, SERVICE_KEYS } from '../data/services.js';
+import { SERVICE_KEYS } from '../data/services.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS, BUILDING_SERVICES } from '../data/buildings.js';
-import { within, isBuilt } from './grid.js';
+import { ortho, isBuilt } from './grid.js';
 import { cellB } from './intensity.js';
 
 const cfg = (state) => state.config ?? CONFIG;
@@ -22,16 +22,12 @@ export function baseServices(cell) {
   return HABITATS[cell.habitat].services;
 }
 
-export function cellSupply(state, cell) {
+export function cellSupply(cell) {
   const base = baseServices(cell);
   const out = emptyServices();
   if (!base) return out;
   const B = cellB(cell);
-  let mult = 1;
-  if (!isBuilt(cell) && cell.habitat === 'lake') {
-    mult = Math.max(0, 1 - cfg(state).lakePollutionSupplyPenalty * (cell.lakePollution ?? 0));
-  }
-  for (const k of SERVICE_KEYS) out[k] = round3(base[k] * B * mult);
+  for (const k of SERVICE_KEYS) out[k] = round3(base[k] * B);
   return out;
 }
 
@@ -39,15 +35,16 @@ export function cellSupply(state, cell) {
 export function computeSupply(state) {
   for (const cell of state.cells) {
     cell.B = cellB(cell);
-    cell.supply = cellSupply(state, cell);
+    cell.supply = cellSupply(cell);
   }
 }
 
+// Services received: the sum of the supply of the four touching cells (N, E, S, W), capped.
 export function receivedAt(state, row, col) {
   const out = emptyServices();
   for (const k of SERVICE_KEYS) {
     let sum = 0;
-    for (const c of within(state, row, col, SERVICES[k].radius)) sum += c.supply[k];
+    for (const c of ortho(state, row, col)) sum += c.supply[k];
     out[k] = Math.min(cfg(state).serviceCap, round3(sum));
   }
   return out;
@@ -60,10 +57,10 @@ export function computeReceived(state) {
   }
 }
 
-// The cell within the service radius that contributes most of service s to (row, col).
+// The touching cell (N, E, S, W) that contributes most of service s to (row, col).
 export function topContributor(state, row, col, s) {
   let best = null;
-  for (const c of within(state, row, col, SERVICES[s].radius)) {
+  for (const c of ortho(state, row, col)) {
     if (c.supply[s] > 0 && (best === null || c.supply[s] > best.supply[s])) best = c;
   }
   return best;

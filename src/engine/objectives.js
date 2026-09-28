@@ -17,8 +17,8 @@ export function habitatCounts(state) {
 export function evaluateObjective(state, id) {
   const o = OBJECTIVES[id];
   switch (o.kind) {
-    case 'seaPollutionMax':
-      return { met: state.seaPollution <= o.value, progress: `sea ${Math.round(state.seaPollution)}` };
+    case 'pollutionMax':
+      return { met: state.pollution <= o.value, progress: `pollution ${Math.round(state.pollution)}` };
     case 'keepPrimary': {
       const kept = state.startPrimary.filter((i) => state.cells[i].landUse === 'primary').length;
       return { met: kept === state.startPrimary.length, progress: `${kept}/${state.startPrimary.length}` };
@@ -58,8 +58,7 @@ export function evaluateObjective(state, id) {
     }
     case 'cleanRivers': {
       const dirty = state.cells.filter((c) => c.habitat === 'river' && wasteTokensAt(state, c) > 0).length;
-      const lake = state.cells.reduce((s, c) => s + (c.lakePollution ?? 0), 0);
-      return { met: dirty === 0 && lake === 0, progress: dirty || lake ? `${dirty} dirty, lake ${lake}` : 'clean' };
+      return { met: dirty === 0, progress: dirty ? `${dirty} dirty` : 'clean' };
     }
     case 'natureShareMin': {
       const share = state.cf.actual > 0 ? (state.cf.actual - state.cf.noNature) / state.cf.actual : 0;

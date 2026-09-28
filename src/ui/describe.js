@@ -9,8 +9,6 @@ export function gdpLabel(id) {
   const parts = [`${g.base}`];
   if (g.serviceBonus) parts.push(SERVICES[g.serviceBonus.service].short.toLowerCase());
   if (g.nearbyResidential) parts.push('homes');
-  if (g.seagrassBonus) parts.push('seagrass');
-  if (g.primaryBonus && !g.serviceBonus) parts.push('ancient');
   return parts.join(' + ');
 }
 
@@ -25,5 +23,5 @@ export function habitatName(id) {
 export function serviceTooltip(key) {
   const s = SERVICES[key];
   const ncp = s.ncp.map((n, i) => `NCP ${n}: ${s.ncpNames[i]}`).join('\n');
-  return `${s.name}\n${s.tip}\nReaches ${s.radius} square${s.radius > 1 ? 's' : ''} away.\nIPBES Nature's Contributions to People:\n${ncp}`;
+  return `${s.name}\n${s.tip}\nReaches the four squares touching it.\nIPBES Nature's Contributions to People:\n${ncp}`;
 }

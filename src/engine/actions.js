@@ -288,11 +288,12 @@ export function takeTurn(state, action) {
   const proj = projectGdp(s);
   const mult = c.happinessMode === 'perTurn' ? happinessMultiplier(s, s.happiness) : 1;
   const earnings = [];
-  for (const { cell, gdp } of proj.perTile) {
+  for (const { cell, gdp, income, upkeep } of proj.perTile) {
     cell.gdp = gdp;
-    if (gdp > 0) earnings.push({ row: cell.row, col: cell.col, amount: round1(gdp * mult) });
+    const amount = round1(income * mult - upkeep);
+    if (amount !== 0) earnings.push({ row: cell.row, col: cell.col, amount });
   }
-  s.cash = round1(s.cash + proj.total);
+  s.cash = round1(Math.max(0, s.cash + proj.total));
   s.score = round1(s.score + proj.total);
   s.gdpEarned = round1(s.gdpEarned + proj.total);
   s.lastTurnGdp = proj.total;
@@ -311,7 +312,7 @@ export function takeTurn(state, action) {
 
   s.history.push({
     turn: s.turn, gdp: proj.total, cash: s.cash, score: s.score, happiness: s.happiness,
-    intactness: round1(intactness(s) * 1000) / 1000, seaPollution: s.seaPollution
+    intactness: round1(intactness(s) * 1000) / 1000, pollution: s.pollution
   });
 
   // 12. Advance.

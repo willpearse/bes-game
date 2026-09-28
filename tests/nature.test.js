@@ -28,12 +28,13 @@ describe('pressure and intensity', () => {
     updateIntensity(s);
     expect(at(s, 0, 1).intensity).toBe('light');
   });
-  it('adds 1 to marine cells when sea pollution is 10 or more', () => {
-    const s = tinyGame(['ggzo']);
-    s.seaPollution = 9.5;
+  it('adds 1 to sea and lake cells when water pollution is 10 or more', () => {
+    const s = tinyGame(['glzo']);
+    s.pollution = 9.5;
     expect(pressureOn(s, at(s, 0, 3))).toBe(0);
-    s.seaPollution = 10;
+    s.pollution = 10;
     expect(pressureOn(s, at(s, 0, 3))).toBe(1);
+    expect(pressureOn(s, at(s, 0, 1))).toBe(1);
     expect(pressureOn(s, at(s, 0, 0))).toBe(0);
   });
   it('forces reserve-protected marine cells to minimal', () => {
@@ -54,17 +55,16 @@ describe('pressure and intensity', () => {
 });
 
 describe('services', () => {
-  it('receives within radius, excluding own cell, with cap', () => {
-    // Meadow POL 3, radius 1. A built tile surrounded by meadow at distance 1 and 2.
+  it('receives from the four touching squares, with cap', () => {
     const s = tinyGame(['ggggg', 'ggggg', 'ggggg', 'ggggg', 'ggggg']);
     build(s, 2, 2, 'windFarm'); // pressure 0, supplies nothing, so neighbours stay minimal
-    // 8 meadow neighbours: 8 * 3 * 0.9 = 21.6 -> capped at 6
+    // 4 touching meadow cells: 4 * 3 * 0.9 = 10.8 -> capped at 6
     expect(at(s, 2, 2).received.POL).toBe(6);
     s.config.serviceCap = 100;
     computeReceived(s);
-    expect(at(s, 2, 2).received.POL).toBeCloseTo(21.6, 5);
-    // WAT radius 2: 24 meadow cells * 1 * 0.9
-    expect(at(s, 2, 2).received.WAT).toBeCloseTo(21.6, 5);
+    expect(at(s, 2, 2).received.POL).toBeCloseTo(10.8, 5);
+    expect(at(s, 2, 2).received.WAT).toBeCloseTo(4 * 1 * 0.9, 5);
+    expect(at(s, 2, 2).received.GRN).toBeCloseTo(4 * 2 * 0.9, 5);
   });
   it('excludes the tile itself', () => {
     const s = tinyGame(['o', 'g']);
@@ -72,26 +72,18 @@ describe('services', () => {
     expect(at(s, 1, 0).supply.POL).toBeCloseTo(0.4, 5);
     expect(at(s, 1, 0).received.POL).toBe(0);
   });
-  it('radius 1 does not reach distance 2', () => {
-    const s = tinyGame(['gdd']);
-    build(s, 0, 2, 'windFarm');
-    // dunes POL 1 at distance 1 (0.9), meadow POL 3 at distance 2 not counted
-    expect(at(s, 0, 2).received.POL).toBeCloseTo(0.9, 5);
-    expect(receivedAt(s, 0, 2).REC).toBeCloseTo(0.9 * 3 + 0.9 * 2, 5);
-  });
-  it('reduces lake supply by lake pollution', () => {
-    const s = tinyGame(['lg']);
-    at(s, 0, 0).lakePollution = 3;
-    computeSupply(s);
-    expect(at(s, 0, 0).supply.REC).toBeCloseTo(3 * 0.9 * 0.7, 5);
-    at(s, 0, 0).lakePollution = 20;
-    computeSupply(s);
-    expect(at(s, 0, 0).supply.REC).toBe(0);
+  it('ignores diagonal squares', () => {
+    const s = tinyGame(['gdd', 'ddd']);
+    build(s, 1, 1, 'windFarm');
+    // meadow at (0,0) is diagonal: only dunes (POL 1 * 0.9) at (0,1), (1,0), (1,2) count
+    expect(at(s, 1, 1).received.POL).toBeCloseTo(3 * 0.9, 5);
+    expect(receivedAt(s, 1, 1).GRN).toBeCloseTo(3 * 2 * 0.9, 5);
   });
   it('finds the top contributor', () => {
     const s = tinyGame(['gsd', 'ggg']);
     build(s, 1, 1, 'windFarm');
-    expect(topContributor(s, 1, 1, 'FLD').habitat).toBe('saltmarsh');
+    expect(topContributor(s, 1, 1, 'WAT').habitat).toBe('saltmarsh');
+    expect(topContributor(s, 1, 1, 'POL').habitat).toBe('meadow');
     expect(topContributor(s, 0, 0, 'POL')).not.toBeNull();
   });
 });
@@ -175,19 +167,19 @@ describe('wellbeing', () => {
     const s = tinyGame(['ggg', 'g#g', 'ggg']);
     const c = at(s, 1, 1);
     const p = wellbeingParts(s, c);
-    expect(p.base).toBe(5);
-    expect(p.rec).toBeCloseTo(Math.min(c.received.REC, 6) / 2, 5);
-    expect(p.air).toBeCloseTo(Math.min(c.received.AIR, 6) / 3, 5);
-    expect(p.water).toBe(c.received.WAT < 2 ? -1 : 0);
+    expect(p.base).toBe(4);
+    expect(p.green).toBeCloseTo(Math.min(c.received.GRN, 6), 5);
+    expect(c.received.GRN).toBe(6); // four light-use meadows: 4 * 2 * 0.8 = 6.4, capped
+    expect(wellbeing(s, c)).toBeCloseTo(4 + 6, 5);
   });
   it('clamps to 0..10', () => {
     const s = tinyGame(['www', 'w#w', 'www']);
     expect(wellbeing(s, at(s, 1, 1))).toBeLessThanOrEqual(10);
-    const zero = () => ({ POL: 0, WAT: 0, FLD: 0, AIR: 0, REC: 0 });
+    const zero = () => ({ POL: 0, GRN: 0, WAT: 0 });
     at(s, 1, 1).waste = 5;
     const s2 = tinyGame(['@@@', '@#@', '@@@'], { buildings: { '#': 'towerBlock', '@': 'factory' } });
     at(s2, 1, 1).waste = 10;
-    // 4 - 1 (water) - 4 (nuisance, capped) - 3 (waste, capped) = -4 -> 0
+    // 3 - 4 (nuisance, capped) - 3 (waste, capped) = -4 -> 0
     expect(wellbeing(s2, at(s2, 1, 1), zero)).toBe(0);
     const p = wellbeingParts(s2, at(s2, 1, 1), zero);
     expect(p.nuisance).toBe(-4);
@@ -201,18 +193,14 @@ describe('wellbeing', () => {
     at(s, 1, 1).waste = 1;
     expect(wellbeingParts(s, at(s, 1, 1)).waste).toBe(-2);
   });
-  it('uses the best school and hospital only', () => {
-    const s = tinyGame(['gggggg', 'g#Sggg', 'ggggSg'], { buildings: { '#': 'cottages', S: 'school' } });
-    // (1,2) school has 3 nature orthogonal neighbours minus... check forest school
-    const p = wellbeingParts(s, at(s, 1, 1));
-    expect(p.school).toBe(2);
-    const s2 = tinyGame(['#H'], { buildings: { '#': 'cottages', H: 'hospital' } });
-    expect(wellbeingParts(s2, at(s2, 0, 0)).hospital).toBe(1); // no AIR, not boosted
-    const s3 = tinyGame(['www', '#Hw', 'www'], { buildings: { '#': 'cottages', H: 'hospital' } });
-    expect(at(s3, 1, 1).received.AIR).toBeGreaterThanOrEqual(3);
-    expect(wellbeingParts(s3, at(s3, 1, 0)).hospital).toBe(2);
-    const s4 = tinyGame(['#SS'], { buildings: { '#': 'cottages', S: 'school' } });
-    expect(wellbeingParts(s4, at(s4, 0, 0)).school).toBe(1); // not a forest school
+  it('adds one school and one hospital bonus if any is in range', () => {
+    const s = tinyGame(['#SgS'], { buildings: { '#': 'cottages', S: 'school' } });
+    expect(wellbeingParts(s, at(s, 0, 0)).school).toBe(1); // two schools still give 1
+    expect(wellbeingParts(s, at(s, 0, 0)).hospital).toBe(0);
+    const s2 = tinyGame(['#gggH'], { buildings: { '#': 'cottages', H: 'hospital' } });
+    expect(wellbeingParts(s2, at(s2, 0, 0)).hospital).toBe(2); // within 4
+    const s3 = tinyGame(['#ggggH'], { buildings: { '#': 'cottages', H: 'hospital' } });
+    expect(wellbeingParts(s3, at(s3, 0, 0)).hospital).toBe(0); // 5 away
   });
   it('happiness is resident-weighted, 5 with no homes, and has population pressure', () => {
     const empty = tinyGame(['ggg']);
@@ -237,13 +225,13 @@ describe('intactness', () => {
 
 describe('deliveries', () => {
   it('lists the top supplier of each used service, capped and spread across services', () => {
-    const s = tinyGame(['wgw', 'g#g', 'Fgf'], { buildings: { F: 'familyFarm' } });
+    const s = tinyGame(['gwg', 'g#g', 'Fgf'], { buildings: { F: 'familyFarm' } });
     const all = deliveries(s);
     const services = all.map((d) => d.service);
     expect(services).toContain('POL'); // to the farm
-    expect(services).toContain('REC'); // to the cottages
+    expect(services).toContain('GRN'); // to the cottages
     expect(all.every((d) => d.amount > 0)).toBe(true);
-    const home = all.find((d) => d.service === 'AIR' && d.to.row === 1);
+    const home = all.find((d) => d.service === 'GRN' && d.to.row === 1);
     expect(at(s, home.from.row, home.from.col).habitat).toBe('woodland');
     const two = deliveries(s, 2);
     expect(two).toHaveLength(2);

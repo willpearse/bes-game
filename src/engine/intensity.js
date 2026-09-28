@@ -34,7 +34,7 @@ export function pressureOn(state, cell) {
     if (isBuilt(n)) p += BUILDINGS[n.building].pressure;
   }
   if (wasteTokensAt(state, cell) > 0) p += 1;
-  if (isMarine(cell) && state.seaPollution >= cfg(state).seaPollutionPressureThreshold) p += 1;
+  if ((isMarine(cell) || cell.habitat === 'lake') && state.pollution >= cfg(state).pollutionPressureThreshold) p += 1;
   return p;
 }
 

@@ -65,7 +65,7 @@ describe('createGame', () => {
     const river = cellAt(s, 4, 4);
     expect(river.pressure).toBe(2); // two cottages within 1
     expect(river.intensity).toBe('light');
-    expect(cellAt(s, 4, 5).received.REC).toBeGreaterThan(0);
+    expect(cellAt(s, 4, 5).received.GRN).toBeGreaterThan(0);
     expect(s.happiness).toBeGreaterThan(0);
     expect(s.residents).toBe(2);
     expect(s.stats.startIntactness).toBeGreaterThan(0.8);

@@ -36,10 +36,8 @@ export const UI = {
 // Single-hue ramps for service overlays (low -> high), and biodiversity.
 export const OVERLAY_COLOURS = {
   POL: 0xe8b53a,
+  GRN: 0x86b04a,
   WAT: 0x7fb2d6,
-  FLD: 0x9aa6ff,
-  AIR: 0x86b04a,
-  REC: 0xef8f5a,
   BIO: 0x5fd068,
   WASTE: 0x8a6142
 };

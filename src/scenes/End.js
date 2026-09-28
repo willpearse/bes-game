@@ -45,7 +45,7 @@ export class End extends Phaser.Scene {
     text(this, 464, 136, money(f.natureContribution), { size: 56, bold: true, color: C.text });
     text(this, 464, 204, `That is ${pct}% of all the GDP your region earned.`, { size: 20, color: C.text });
     text(this, 464, 236,
-      'This is what you would have lost if pollinators, clean water, flood protection,\nclean air and lovely places to be had simply not been there.',
+      'This is what you would have lost if pollinators, green space and clean air,\nand clean water had simply not been there.',
       { size: 14, color: C.dim, lineSpacing: 4 });
     text(this, 464, 290, `In events, nature also saved you ${money(f.damageAvoided)} of damage (${f.eventHits} tile${f.eventHits === 1 ? '' : 's'} were hit).`,
       { size: 15, color: C.text, wrap: 760 });

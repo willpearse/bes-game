@@ -511,37 +511,13 @@ I.icon_WAT = () => {
   return cv.rows();
 };
 
-I.icon_FLD = () => {
-  const cv = new Canvas();
-  cv.rrect(5, 3, 22, 14, 3, '4');
-  cv.poly([[5, 14], [27, 14], [16, 30]], '4');
-  cv.rrect(7, 5, 18, 11, 2, 'b');
-  cv.poly([[7, 14], [25, 14], [16, 27]], 'b');
-  cv.line(9, 15, 12, 13, 'c', 2).line(12, 13, 16, 16, 'c', 2).line(16, 16, 20, 13, 'c', 2).line(20, 13, 23, 15, 'c', 2);
-  cv.outline();
-  return cv.rows();
-};
-
-I.icon_AIR = () => {
+I.icon_GRN = () => {
   const cv = new Canvas();
   cv.ellipse(17, 14, 10, 7, '7');
   cv.poly([[7, 14], [17, 7], [27, 14], [17, 21]], '7');
   cv.line(6, 27, 24, 8, '6', 2);
   cv.line(13, 14, 11, 9, '6').line(18, 14, 20, 19, '6');
   cv.ellipse(14, 11, 3, 1.5, '8');
-  cv.outline();
-  return cv.rows();
-};
-
-I.icon_REC = () => {
-  const cv = new Canvas();
-  cv.circle(15, 6, 4, '3');
-  cv.set(14, 5, '0'); cv.set(17, 5, '0');
-  cv.rrect(11, 11, 9, 10, 3, 'd');
-  cv.rrect(19, 12, 5, 7, 2, '6');
-  cv.line(13, 21, 9, 29, '1', 3).line(18, 21, 21, 29, '1', 3);
-  cv.line(10, 13, 6, 20, '3', 2);
-  cv.line(5, 18, 4, 30, '2', 2);
   cv.outline();
   return cv.rows();
 };

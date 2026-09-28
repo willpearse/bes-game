@@ -22,9 +22,8 @@ export const CONFIG = {
   objectives: null,           // chosen objective ids; null = the first objectiveCount of the offer
   eventCount: 3,
   riverMaxSteps: 3,
-  seaPollutionPressureThreshold: 10,
-  seaRecoveryPerSeagrass: 0.5,
-  lakePollutionSupplyPenalty: 0.1,
+  pollutionPressureThreshold: 10,  // water pollution at which every sea and lake cell gains 1 pressure
+  pollutionRecoveryPerSeagrass: 0.5,
   happinessGdpFactor: 0.1,
   happinessNeutral: 5,
   noResidentsHappiness: 5,

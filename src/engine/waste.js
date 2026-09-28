@@ -1,8 +1,9 @@
 // Waste (section 10): token mode with downhill flow, or simple mode.
 import { CONFIG } from '../data/config.js';
-import { HABITATS, RIPARIAN_HABITATS, RIPARIAN_CLEAN } from '../data/habitats.js';
+import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
 import { cellAt, idx, ortho, isBuilt, isNature, isMarine, building, round1 } from './grid.js';
+import { cellB } from './intensity.js';
 
 const cfg = (state) => state.config ?? CONFIG;
 
@@ -19,12 +20,13 @@ export function wasteTokensAt(state, cell) {
   return 0;
 }
 
-// Clean capacity of a nature land cell: habitat cleans, minus 1 at intense use.
+// Clean capacity of a nature land cell (not river, lake or sea): its water service supply, rounded down.
+// Worn or young habitat has a lower B, so it supplies less and cleans less.
 export function cleanCapacity(cell) {
   if (!isNature(cell)) return 0;
   const h = HABITATS[cell.habitat];
-  if (h.cleans == null) return 0;
-  return Math.max(0, h.cleans - (cell.intensity === 'intense' ? 1 : 0));
+  if (h.marine || h.water) return 0;
+  return Math.floor(Math.round(h.services.WAT * cellB(cell) * 1000) / 1000);
 }
 
 function removeFrom(cell, n) {
@@ -53,7 +55,7 @@ function isSink(cell) {
 // Step 10 in token mode. Mutates state, pushes to log.
 export function resolveWasteTokens(state, log) {
   const c = cfg(state);
-  const record = { produced: 0, cleaned: 0, recycled: 0, riparian: 0, moves: [], toSea: 0, toLake: 0 };
+  const record = { produced: 0, cleaned: 0, recycled: 0, moves: [], toSea: 0, toLake: 0 };
 
   // 1. Produce.
   for (const cell of state.cells) {
@@ -64,16 +66,15 @@ export function resolveWasteTokens(state, log) {
     }
   }
 
-  // 2. Clean: nature land cells, then riparian buffers, then recycling centres.
+  // 2. Clean: each nature land cell cleans its own cell, then river cells N, E, S, W of it,
+  // up to its capacity. Then recycling centres.
   for (const cell of state.cells) {
-    const cap = cleanCapacity(cell);
-    if (cap > 0) record.cleaned += removeFrom(cell, cap);
-  }
-  for (const cell of state.cells) {
-    if (isNature(cell) && RIPARIAN_HABITATS.includes(cell.habitat)) {
-      for (const n of ortho(state, cell.row, cell.col)) {
-        if (isRiver(n)) record.riparian += removeFrom(n, RIPARIAN_CLEAN);
-      }
+    let left = cleanCapacity(cell);
+    for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
+      if (left <= 0) break;
+      const r = removeFrom(t, left);
+      left -= r;
+      record.cleaned += r;
     }
   }
   for (const cell of state.cells) {
@@ -106,16 +107,12 @@ export function resolveWasteTokens(state, log) {
     }
     if (!moved) break;
     for (let i = 0; i < delta.length; i++) state.cells[i].waste += delta[i];
-    // Sinks: tokens entering marine or lake cells are removed.
+    // Sinks: tokens entering marine or lake cells become water pollution.
     for (const cell of state.cells) {
       if (cell.waste > 0 && isSink(cell)) {
-        if (isMarine(cell)) {
-          state.seaPollution += cell.waste;
-          record.toSea += cell.waste;
-        } else {
-          cell.lakePollution = (cell.lakePollution ?? 0) + cell.waste;
-          record.toLake += cell.waste;
-        }
+        state.pollution += cell.waste;
+        if (isMarine(cell)) record.toSea += cell.waste;
+        else record.toLake += cell.waste;
         cell.waste = 0;
       }
     }
@@ -140,8 +137,8 @@ export function resolveWasteSimple(state, log) {
     }
   }
   const toSea = Math.max(0, produced - capacity);
-  state.seaPollution += toSea;
-  const record = { produced, cleaned: Math.min(produced, capacity), recycled: 0, riparian: 0, moves: [], toSea, toLake: 0 };
+  state.pollution += toSea;
+  const record = { produced, cleaned: Math.min(produced, capacity), recycled: 0, moves: [], toSea, toLake: 0 };
   seaRecovery(state, record);
   log.push({ type: 'waste', ...record });
   return record;
@@ -150,9 +147,9 @@ export function resolveWasteSimple(state, log) {
 function seaRecovery(state, record) {
   const c = cfg(state);
   const healthy = state.cells.filter((x) => isNature(x) && x.habitat === 'seagrass' && x.intensity !== 'intense').length;
-  const before = state.seaPollution;
-  state.seaPollution = round1(Math.max(0, state.seaPollution - c.seaRecoveryPerSeagrass * healthy));
-  record.seaRecovered = round1(before - state.seaPollution);
+  const before = state.pollution;
+  state.pollution = round1(Math.max(0, state.pollution - c.pollutionRecoveryPerSeagrass * healthy));
+  record.recovered = round1(before - state.pollution);
 }
 
 export function resolveWaste(state, log) {
