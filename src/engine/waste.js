@@ -20,13 +20,15 @@ export function wasteTokensAt(state, cell) {
   return 0;
 }
 
-// Clean capacity of a nature land cell (not river, lake or sea): its water service supply, rounded down.
+// Clean capacity of a nature land cell (not river, lake or sea): its water service supply, rounded
+// (CONFIG.cleanRounding 0.5 rounds to the nearest whole token, 0 rounds down).
 // Worn or young habitat has a lower B, so it supplies less and cleans less.
-export function cleanCapacity(cell) {
+export function cleanCapacity(cell, state = null) {
   if (!isNature(cell)) return 0;
   const h = HABITATS[cell.habitat];
   if (h.marine || h.water) return 0;
-  return Math.floor(Math.round(h.services.WAT * cellB(cell) * 1000) / 1000);
+  const c = state ? cfg(state) : CONFIG;
+  return Math.floor(Math.round((h.services.WAT * cellB(cell) + c.cleanRounding) * 1000) / 1000);
 }
 
 function removeFrom(cell, n) {
@@ -90,8 +92,8 @@ export function resolveWasteTokens(state, log) {
   }
 
   // 2. Clean: each nature land cell cleans its own cell, then river cells N, E, S, W of it,
-  // up to its capacity.
-  const capLeft = state.cells.map((cell) => cleanCapacity(cell));
+  // up to its capacity for the turn. It cleans again after each move, so waste flowing past is caught too.
+  const capLeft = state.cells.map((cell) => cleanCapacity(cell, state));
   const cleanPass = () => {
     state.cells.forEach((cell, i) => {
       for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
@@ -129,7 +131,7 @@ export function resolveWasteTokens(state, log) {
         cell.waste = 0;
       }
     }
-    if (c.cleanWhileFlowing) cleanPass();
+    cleanPass();
   }
 
   seaRecovery(state, record);
@@ -146,7 +148,7 @@ export function resolveWasteSimple(state, log) {
     produced += r.made;
     released += r.released;
   }
-  for (const cell of state.cells) capacity += cleanCapacity(cell);
+  for (const cell of state.cells) capacity += cleanCapacity(cell, state);
   const toSea = Math.max(0, released - capacity);
   state.pollution += toSea;
   const record = { produced, absorbed: produced - released, cleaned: Math.min(released, capacity), released, moves: [], toSea, toLake: 0 };

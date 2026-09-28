@@ -199,7 +199,7 @@ export class UI extends Phaser.Scene {
 
   buildingTip(id) {
     const b = BUILDINGS[id];
-    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn.${foodLabel(id) ? ` Food ${foodLabel(id)}.` : ''}${b.residents ? ` Houses ${b.residents} (each eats 1 food).` : ''} Waste ${b.waste}: nature touching it soaks up 1 per 2 water; the rest costs £1 each.`];
+    const lines = [`${b.name} (${b.role})`, b.tip, `Costs £${b.cost}. GDP ${gdpLabel(id)} a turn.${foodLabel(id) ? ` Food ${foodLabel(id)}.` : ''}${b.residents ? ` Houses ${b.residents} (each eats 1 food).` : ''} Waste ${b.waste}: nature touching it soaks up 1 per ${fmt1(this.session.state.config.wasteAbsorbDivisor)} water; the rest costs £1 each.`];
     if (b.residents) lines.push(`Homes for ${b.residents} resident${b.residents > 1 ? 's' : ''}.`);
     if (b.pressure) lines.push(`Puts pressure ${b.pressure} on nature next to it.`);
     if (b.nuisance) lines.push('Homes next to it are less happy.');

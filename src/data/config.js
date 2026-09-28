@@ -19,8 +19,6 @@ export const CONFIG = {
   objectives: null,           // chosen objective ids; null = the first objectiveCount of the offer
   eventCount: 3,
   riverMaxSteps: 3,
-  // Experimental (0 = off): riverbank nature also cleans waste as it flows past, using capacity left over this turn.
-  cleanWhileFlowing: 0,
   pollutionPressureThreshold: 10,  // water pollution at which every sea and lake cell gains 1 pressure
   pollutionRecoveryPerSeagrass: 0.5,
   pollutionDecay: 0.1,        // share of water pollution that disperses each turn (after seagrass)
@@ -33,7 +31,10 @@ export const CONFIG = {
 
   // Waste bill: nature touching a building soaks up 1 waste per wasteAbsorbDivisor water service it receives;
   // every token left over costs wasteBillPerToken and flows downhill.
-  wasteAbsorbDivisor: 2,
+  wasteAbsorbDivisor: 1.5,
+  // A land nature square cleans waste on itself and the river beside it: its water service supply plus this, rounded
+  // down, in tokens a turn (0.5 = round to the nearest, so meadow and heath clean 1).
+  cleanRounding: 0.5,
   wasteBillPerToken: 1,
   // Chronic pollution makes clean-up dearer: +£1 a token per wasteBillPollutionStep of water pollution, up to wasteBillMax.
   wasteBillPollutionStep: 40,

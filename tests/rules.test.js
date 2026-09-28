@@ -151,7 +151,7 @@ describe('preview', () => {
   it('reports GDP, services, intensity changes, happiness and warnings', () => {
     const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
     const p = preview(s, { type: 'build', building: 'cottages' }, 3, 5);
-    expect(p.gdp).toBe(1 - (p.received.WAT >= 2 ? 0 : 1)); // income 1, less a £1 bill unless nature soaks up its waste
+    expect(p.gdp).toBe(1 - (Math.floor(p.received.WAT / s.config.wasteAbsorbDivisor) >= 1 ? 0 : 1)); // income 1, less a £1 bill unless nature soaks up its waste
     expect(p.received.GRN).toBeGreaterThan(0);
     expect(p.cost).toBe(2);
     expect(p.intensityChanges.length).toBeGreaterThan(0);
