@@ -27,6 +27,8 @@ npm test             # Vitest engine tests (tests/*.test.js)
 npm run coverage     # engine line coverage (target > 90%)
 npm run build        # static build into dist/ (relative base, works on GitHub Pages)
 npm run simulate -- --games 500 --bot all      # headless balance run (random | greedy | nature | balanced | repair | both | all)
+npm run simulate -- --trace --bot greedy --map millValley --seed 5   # one game, turn by turn
+npm run simulate -- --games 100 --bot repair --set wasteBillMax=1  # try a CONFIG number without editing files
 npm run payoff -- --games 300                  # building pay-off by touching nature, observed vs theory
 node scripts/draw-sprites.js                   # regenerate src/art/sprites.js
 ```
@@ -85,6 +87,10 @@ public/                favicon, web app manifest, home-screen icons
 `takeTurn` applies the action, then in order: market update, intensity, Primary loss, succession, supply, services received, happiness, GDP (plus counterfactuals), waste, event, advance turn. The `log` it returns drives all animations and messages (GDP floats, waste token moves, events, toasts).
 
 There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − fertiliser (farms with worn soil) − food bought. Floods and storm surges wreck the most exposed tiles they hit, leaving bare ground. Each map has a housing target checked at the end, and the end screen awards a medal (bronze: target met and everyone fed; silver: plus objectives; gold: plus the map's `goldScore`; platinum: a gold that beats your best on this device for this build). Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
+
+## Balance workflow
+
+Bots in `scripts/bots.js` are one-sentence rules (random, greedy, nature, balanced, repair). `simulate` prints each bot's actions per game (builds, restores, passes), score, costs, events and medal rates; `--trace` shows why a bot does what it does; `--set` tries a number before you commit it to `src/data/`. Save results that inform a rule change in `reports/` and summarise them in `NOTES.md`. Greedy is not a pure builder: in market mode restorations cost £0, so it restores whenever that gains GDP (about 8 times a game on Mill valley).
 
 ## Display notes
 

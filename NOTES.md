@@ -250,6 +250,7 @@ What stands out, compared with the five-service version:
 - **Repair beats balanced on Mill valley** (£293 against £270), with a waste bill 21% lower, but trails greedy, which picks *which* squares to restore (and when to build instead) by value rather than by a rule.
 - **Over-repairing costs.** A variant that restored any nature square next to a building (not only bare ground) made about 15 restorations a game on Mill valley and scored £197: the turns spent restoring were worth more as builds.
 - **On the estuary** there is little bare ground, so repair plays almost like balanced (£685) but earns a medal most often (65%), because it puts food first.
+- **Tools:** `simulate` now prints actions per game (builds, restores, restores in the first half, passes), and `--trace` prints one game turn by turn (action, square, food, residents, pollution, turn GDP, cash, events).
 - **Food runs out in stage C for every bot.** The stage C market pile has no family farms, hill farms or fishing fleets and only one Cluck Towers, while tower blocks keep coming. That, not bot behaviour, is the main reason "fed on the last turn" (and so bronze) fails so often. See TODO.
 
 Open questions and future work are in `TODO.md`.

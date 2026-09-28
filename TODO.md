@@ -12,9 +12,10 @@ Ideas and open questions for later sessions. Newest designer requests first.
 
 - **Waste is too fast and too hard to fight.** Waste reaches the sea within a turn or two (river tokens move up to 3 squares a turn), and players will struggle to see how to deal with it. Once waste is in the sea or a lake, the only clean-up is healthy seagrass (0.5 a turn per cell; 4 cells on the estuary map). It gets worse: at water pollution 10+, all sea and lake cells gain pressure, which can push seagrass to intense use and switch its cleaning off. Prevention (nature touching buildings soaks up waste; wetlands by the river clean it) exists and a first-game hint mentions it, but it is still hard to see. Ideas: slow the flow (fewer river steps, or waste pauses on each square); show where waste is going and what is cleaning it (for example a "waste this turn" breakdown: made, cleaned by fen, reached the sea); hint at the counter-play when waste first reaches the river or sea; add direct sea clean-up with its own costs (restoring oyster or mussel beds, a sewage works tile); stop the 10+ pollution trap from shutting seagrass down entirely.
 
-## Balance (from `npm run simulate`, see NOTES.md 53 to 60 and `reports/`)
+## Balance (from `npm run simulate`, see NOTES.md 53 to 61 and `reports/`)
 
-- **Mill valley: waste bills dominate and greedy still scores highest.** Bills take more than half of income; cottages, Cluck Towers and the factory barely break even. The nature bot earns bronze most often but scores lowest. A bot that restores the bare ground around the town first would show whether repairing the valley can beat building; if not, consider more bare ground next to the factory and homes, or a slightly lower starting waste.
+- **Mill valley: waste bills dominate, and the best play mixes repair and building.** Bills take more than half of income. Greedy scores highest (about £438) and restores about 8 times a game there; the repair bot (NOTES 61) beats balanced but trails greedy; restoring everything next to buildings scores worst. Decide whether that mix is the intended lesson, or whether repair-first play should do better (for example more bare ground next to the factory and homes, or a slightly lower starting waste).
+- **Restorations are free in market mode** (the discarded card has no surcharge in slot 0), which is why greedy restores whenever it gains anything. Decide whether restoring should cost something (for example £1, as in menu mode).
 - **Silver and gold are rare** because both objectives are seldom met (2 to 16% of bot games). Check which objectives are near impossible on each map with the simulator.
 - **Food buildings vanish from the market in stage C** (NOTES 61): the stage C pile has no family farms, hill farms or fishing fleets and one Cluck Towers, while tower blocks keep coming. This is the main reason "fed at the end" (and so bronze) fails. Add food buildings to the stage C pile, or make bronze check food over the last few turns rather than only the final one.
 - The bots only look one turn ahead; a planning bot would show whether early restoration pays back.
@@ -27,6 +28,8 @@ Ideas and open questions for later sessions. Newest designer requests first.
 - `@vitest/coverage-v8` was added as a dev dependency to measure coverage. Confirm this is OK.
 
 ## Smaller ideas
+
+- The event pop-up's "Wrecked" line and the dust-cloud animation (NOTES 57) were built but not checked in a screenshot; look at them the next time a flood hits in play.
 
 - Sound and music (out of scope for the prototype).
 - Touch-friendly controls: bigger buttons and a long press for tooltips on phones.

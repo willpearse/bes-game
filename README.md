@@ -11,6 +11,7 @@ npm test           # engine tests (Vitest)
 npm run coverage   # engine line coverage
 npm run build      # static build in dist/
 npm run simulate -- --games 500 --bot all   # random, greedy, nature, balanced, repair
+npm run simulate -- --trace --bot repair --map millValley --seed 5   # one game, turn by turn
 npm run payoff -- --games 300               # building pay-off with and without nature, vs theory
 ```
 
