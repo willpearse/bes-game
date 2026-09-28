@@ -1,7 +1,9 @@
 // Events (section 11).
 import { CONFIG } from '../data/config.js';
 import { EVENTS } from '../data/events.js';
-import { within, isBuilt, isMarine, hasTag, cellName, round1 } from './grid.js';
+import { HABITATS } from '../data/habitats.js';
+import { within, cellAt, isBuilt, isMarine, isLand, hasTag, cellName, round1 } from './grid.js';
+import { random } from './rng.js';
 import { topContributor } from './services.js';
 
 const cfg = (state) => state.config ?? CONFIG;
@@ -14,6 +16,7 @@ export function riskRule(state, event, cell) {
       const near = within(state, cell.row, cell.col, rule.radius).some((c) => rule.nearHabitats.includes(c.habitat) && !isBuilt(c));
       if (near) return { service: event.protection[0].service, min: event.protection[0].min };
     } else if (rule.nearMarine) {
+      if (rule.landOnly && !isLand(cell)) continue;
       if (within(state, cell.row, cell.col, rule.radius).some(isMarine)) {
         return { service: event.protection[0].service, min: event.protection[0].min };
       }
@@ -58,12 +61,13 @@ export function resolveEvent(state, eventId, log) {
       protectedTiles.push({ ...pos, service: rule.service, value, damageAvoided: d,
         by: top ? { row: top.row, col: top.col, name: cellName(top) } : null });
     } else {
-      hit.push({ ...pos, service: rule.service, value, damage: d });
+      hit.push({ ...pos, service: rule.service, value, min: rule.min, damage: d });
       damage += d;
     }
   }
   damage = round1(damage);
   potential = round1(potential);
+  const destroyed = event.destroys ? wreckTiles(state, hit) : [];
   state.cash = round1(Math.max(0, state.cash - damage));
   state.eventDamage = round1(state.eventDamage + damage);
   state.score = round1(state.score - damage);
@@ -86,12 +90,33 @@ export function resolveEvent(state, eventId, log) {
 
   const report = {
     type: 'event', id: eventId, name: event.name, turn: state.turn,
-    hit, protected: protectedTiles, protectors, messages,
+    hit, protected: protectedTiles, protectors, messages, destroyed,
     damage, potential, avoided: round1(potential - damage)
   };
   state.eventHistory.push(report);
   log.push(report);
   return report;
+}
+
+// Wrecks the most exposed of the hit tiles (largest shortfall of the protecting service; ties broken at random by the
+// seeded RNG): eventDestroyShare of them, rounded. They become bare ground. Returns the wrecked tiles.
+export function wreckTiles(state, hit) {
+  const n = Math.round(hit.length * cfg(state).eventDestroyShare);
+  if (n === 0) return [];
+  const ranked = hit
+    .map((h) => ({ h, gap: h.min - h.value, tie: random(state) }))
+    .sort((a, b) => b.gap - a.gap || a.tie - b.tie)
+    .slice(0, n)
+    .map(({ h }) => h);
+  for (const h of ranked) {
+    const cell = cellAt(state, h.row, h.col);
+    Object.assign(cell, {
+      kind: 'nature', building: null, habitat: 'bare', landUse: HABITATS.bare.landUse,
+      age: 0, restored: false, soil: null, gdp: 0, wellbeing: null
+    });
+  }
+  state.stats.destroyed = (state.stats.destroyed ?? 0) + ranked.length;
+  return ranked.map((h) => ({ row: h.row, col: h.col, name: h.name }));
 }
 
 // The next scheduled event at or after the current turn (revealed one stage ahead).

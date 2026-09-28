@@ -93,15 +93,13 @@ describe('waste movement', () => {
     const sea = tinyGame(['o']);
     expect(cleanCapacity(sea.cells[0])).toBe(0);
   });
-  it('built tiles produce waste; recycling centres remove up to 3', () => {
-    const s = tinyGame(['mRm', 'mmm'], { buildings: { R: 'recycling' }, elevation: [[5, 5, 5], [5, 5, 5]] });
-    placeBuilding(at(s, 1, 1), 'factory'); // 3 waste
-    at(s, 0, 0).waste = 2;
+  it('built tiles release the waste touching nature cannot soak up', () => {
+    const s = tinyGame(['mmm', 'mmm'], { elevation: [[5, 5, 5], [5, 5, 5]] });
+    placeBuilding(at(s, 1, 1), 'factory'); // 3 waste; moorland WAT 0.8 x 3 = 2.4 soaks up 1
+    recompute(s);
     const rec = resolveWasteTokens(s, []);
-    expect(rec.produced).toBe(3);
-    expect(rec.recycled).toBe(3);
-    expect(at(s, 1, 1).waste).toBe(0);
-    expect(at(s, 0, 0).waste).toBe(2); // not orthogonal to the centre
+    expect(rec).toMatchObject({ produced: 3, absorbed: 1, released: 2 });
+    expect(at(s, 1, 1).waste).toBe(2);
   });
   it('water pollution falls by 0.5 per healthy seagrass cell, then 10% disperses', () => {
     const s = tinyGame(['zzo']);

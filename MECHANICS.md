@@ -14,14 +14,17 @@ Each mechanic below is there to make one of those lessons playable. The last sec
 ## 1. Score in one line
 
 ```
-score = Σ over 24 turns [ Σ tile income × (1 + 0.1 × (H − 5))  −  waste bills  −  food bought ]
+score = Σ over 24 turns [ Σ tile income × (1 + 0.1 × (H − 5))  −  waste bills  −  fertiliser  −  food bought ]
         − event damage  −  £10 × residents short of the housing target  +  £50 × objectives met
 ```
 
+Then a **medal**: bronze if the housing target is met and everyone is fed on the last turn; silver if both objectives are met too; gold if the score also reaches the map's gold score (about the build-everything bot's average); platinum for a gold that beats your own best on this device (for this build).
+
 - **Tile income** is a building's base GDP plus bonuses from nature, minus penalties from waste and pollution. It never goes below 0.
-- **Waste bill:** nature touching a building soaks up some of its waste; every token left over costs £1 and flows downhill.
+- **Waste bill:** nature touching a building soaks up some of its waste; every token left over costs £1 (£2 once water pollution reaches 40: chronic pollution is dearer to clean up) and flows downhill.
+- **Fertiliser:** family farms and Cluck Towers have soil health (0 to 3). It wears down each turn unless the farm receives 2+ water service (Cluck Towers always wear it down), and recovers otherwise. Each missing point costs £1 a turn.
 - **Food:** every resident eats 1 food a turn. Farms and fishing fleets make it; any shortfall is bought in at £1 a unit.
-- **Housing target:** each map sets a number of residents to reach by the end (River estuary 16, Mill valley 30).
+- **Housing target:** each map sets a number of residents to reach by the end (River estuary 16, Mill valley 24).
 - **H** (happiness, 0 to 10) multiplies income only, from ×0.5 (H 0) to ×1.5 (H 10).
 - **One action a turn**: build, restore or pass. Cash never goes below 0.
 - **Biodiversity is scored separately from GDP.** It never adds to GDP. It shows on the HUD and the end screen (intactness, ancient habitats lost), and several objectives reward it (Ancient heritage, Thriving wildlife, Biodiversity net gain, 30 by 30).
@@ -38,8 +41,11 @@ buildings ──pressure──▶ touching nature wears out (lower B) ──▶ 
     │   POL: farm income     GRN: wellbeing     GRN: holiday   WAT: soaks up waste   WAT: event protection,
     │   and food             ─▶ H ─▶ ×income    park income    (smaller waste bill)  fleet income and food
     │
-    └──waste not soaked up──▶ £1 bill each ──▶ downhill ──▶ river ──▶ sea or lake ──▶ water pollution
-                                                                                      ─▶ fleets, holiday parks
+    │   WAT also keeps farm soil healthy (no fertiliser bill)
+    │
+    └──waste not soaked up──▶ £1–2 bill each ──▶ downhill ──▶ river ──▶ sea or lake ──▶ water pollution
+                                                                                      ─▶ fleets, holiday parks,
+                                                                                         dearer waste bills
 ```
 
 - **Supply** of a nature square = habitat value (0 to 3) × its biodiversity value B (0.4 to 1.0).
@@ -52,16 +58,17 @@ buildings ──pressure──▶ touching nature wears out (lower B) ──▶ 
 |---|---|---|---|---|---|---|
 | **POL** Pollination and pest control | meadow, heath, woodland | Family farm +POL/2 | Family farm +POL/2 | – | Pests: family farm, conifer | – |
 | **GRN** Green space and clean air | woodland, lake, most habitats | Holiday park +GRN/2 | – | wellbeing +GRN (max +6) | Heatwave: homes | – |
-| **WAT** Clean water and flood protection | fen, peat, saltmarsh, seagrass | Fishing fleet +WAT/2 | Fishing fleet +WAT/2 | – | River flood, storm surge: nearby tiles; heatwave: farms | soaks up 1 waste per 2 WAT received; land squares also clean waste flowing past |
+| **WAT** Clean water and flood protection | fen, peat, saltmarsh, seagrass | Fishing fleet +WAT/2 | Fishing fleet +WAT/2 | – | River flood, storm surge: nearby land tiles; heatwave: farms | soaks up 1 waste per 2 WAT received; land squares also clean waste flowing past; 2+ keeps farm soil healthy |
 
-A tile is protected from an event if it receives 3 or more of the named service. Damage to each unprotected tile is max(£4, 8 × its GDP that turn).
+A tile is protected from an event if it receives 3 or more of the named service. Damage to each unprotected tile is max(£2, 4 × its GDP that turn). **Floods and storm surges also wreck 1 in 5 of the tiles they hit** (rounded), the most exposed first (largest shortfall of water service; ties broken at random by the seed): the building is gone and the square becomes bare ground. Heatwaves and pest outbreaks only cost money.
 
 ## 4. Habitats
 
-Base supply at B = 1. Ancient (primary) habitat has B 1.0, mature 0.9, and restored habitat starts at 0.6 and grows to 0.75 (after 3 turns) and 0.9 (after 7).
+Base supply at B = 1. Ancient (primary) habitat has B 1.0, mature 0.9, and restored habitat starts at 0.6 and grows to 0.75 (after 3 turns) and 0.9 (after 7): every service grows at the same pace. **Bare ground** is worn-out, compacted land (PREDICTS class urban, B 0.15 to 0.4): it supplies almost nothing, can be built on, and can be restored to woodland, meadow or (next to water) wetland, which is an immediate gain.
 
 | Habitat | POL | GRN | WAT | Cleans flowing waste (at B 0.9) |
 |---|---|---|---|---|
+| Bare ground | 0 | 1 | 0 | 0 |
 | Peat bog | 0 | 2 | 3 | 2 |
 | Moorland | 1 | 2 | 1 | 0 |
 | Heath | 2 | 2 | 1 | 0 |
@@ -83,19 +90,17 @@ A land square cleans flowing waste on itself first, then on any river square tou
 |---|---|---|---|---|---|---|---|
 | Cottages | 2 | 1 | – | 1 | 1 | – | 1 |
 | Tower block | 5 | 3 | – | 2 | 2 | – | 4 |
-| Family farm | 3 | 1 + POL/2 | 1 + POL/2 | 1 | 1 | – | – |
+| Family farm | 3 | 1 + POL/2; soil | 1 + POL/2 | 1 | 1 | – | – |
 | Hill farm | 2 | 2 | 1 | 0 | 1 | – | – |
-| Cluck Towers | 7 | 4 | 3 | 3 | 2 | 2 | – |
+| Cluck Towers | 7 | 4; soil always wears down | 3 | 3 | 2 | 2 | – |
 | Conifer plantation | 3 | 2 | – | 0 | 1 | – | – |
 | Holiday park | 4 | 1 + GRN/2; −2 if waste within 1; −pollution/5 if sea or lake within 2 | – | 1 | 1 | – | – |
 | School | 3 | 1; +1 wellbeing to homes within 3 | – | 0 | 1 | – | – |
 | Hospital | 5 | 2; +2 wellbeing to homes within 4 | – | 1 | 1 | – | – |
 | Business park | 6 | 2 + 1 per home within 2 (max +2) | – | 1 | 1 | – | – |
 | Factory | 8 | 6 | – | 3 | 2 | 2 | – |
-| Recycling centre | 3 | 0; soaks up 3 waste a turn from buildings touching it | – | 0 | 1 | – | – |
-| Harbour | 7 | 5 | – | 2 | 2 | 2 | – |
-| Fishing fleet | 4 | 1 + WAT/2; −pollution/5 | 1 + WAT/2 | 0 | 2 | – | – |
-| Offshore wind farm | 4 | 3 | – | 0 | 0 | – | – |
+| Fishing fleet | 4 | 1 + WAT/2; −pollution/5 (at most −2) | 1 + WAT/2 | 0 | 2 | – | – |
+| Offshore wind farm | 4 | 3; a reef: sea squares touching it are protected like a marine reserve | – | 0 | 0 | – | – |
 
 Bonuses round down. Farms (Family farm, Hill farm, Cluck Towers) also lose 1 income per waste token on them and face the heatwave. Homes are Cottages and Tower blocks: each resident eats 1 food a turn.
 
@@ -107,31 +112,32 @@ wellbeing (per home, 0 to 10) = base (cottages 4, tower block 3) + GRN received 
 H = resident-weighted average wellbeing
 ```
 
-Nuisance is 2 for each Cluck Towers, Factory or Harbour within 1. Waste is 1 per token on the home or a square touching it.
+Nuisance is 2 for each Cluck Towers or Factory within 1. Waste is 1 per token on the home or a square touching it.
 
 ## 7. Costs and harms
 
 | Harm | Made by | What it hits | Effect on score |
 |---|---|---|---|
-| **Waste bill** | waste that touching nature and recycling cannot soak up | the building that made it | £1 a token, every turn |
+| **Waste bill** | waste that touching nature cannot soak up | the building that made it | £1 a token every turn (£2 once water pollution is 40+) |
+| **Worn soil** | farms without 2+ water service; Cluck Towers always | the farm | £1 fertiliser per missing soil point, every turn |
 | **Food bought** | residents beyond what farms and fleets feed | the town | £1 a unit, every turn |
 | **Pressure** | buildings within 1; waste on the square; water pollution ≥ 10 (sea and lakes) | nature square's use intensity | lower B, so less supply, less soaking up and less cleaning; intense ancient habitat is lost for good |
 | **Waste tokens** | released waste | the square and everything downhill | +1 pressure; homes −1 wellbeing per token; farms −1 income per token; holiday park −2 |
 | **Water pollution** | waste reaching the sea or a lake | fleets; holiday parks near water; sea and lake squares at ≥ 10 | −1 income per 5 pollution; pressure on seagrass |
-| **Nuisance** | Cluck Towers, factory, harbour | homes within 1 | −2 wellbeing each |
-| **Events** | turns 8, 16, 24 | unprotected tiles at risk | −max(£4, 8 × tile GDP) each |
+| **Nuisance** | Cluck Towers, factory | homes within 1 | −2 wellbeing each |
+| **Events** | turns 8, 16, 24 | unprotected tiles at risk | −max(£2, 4 × tile GDP) each; floods and storm surges wreck 1 in 5 of the tiles they hit (most exposed first), leaving bare ground |
 | **Housing shortfall** | too few homes at the end | score | −£10 per resident short |
 
 ## 8. Restoration
 
-One action, costs a turn (and a market discard, or £1 in menu mode). Plant woodland, restore wetland (fen, next to water), sow meadow, rewet peat, or set up a marine reserve (open sea becomes seagrass after 4 turns; protects marine squares within 1). Restoring a farm or plantation demolishes it. Restored habitat is never ancient again.
+One action, costs a turn (and a market discard, or £1 in menu mode). Plant woodland (on meadow, heath, moorland or bare ground), restore wetland (fen, on meadow or bare ground next to water), sow meadow (on bare ground), rewet peat (on moorland), or set up a marine reserve (open sea becomes seagrass after 4 turns; protects marine squares within 1). Restoring a farm or plantation demolishes it. Restored habitat is never ancient again.
 
 ## 9. Maps
 
 | Map | Start | Housing target | Cash |
 |---|---|---|---|
 | River estuary | wild, healthy land; a village of 2 cottages; many ancient habitats | 16 | £10 |
-| Mill valley | a worn valley: a town of 10 cottages and a tower block, 4 family farms, 2 hill farms, Cluck Towers and a factory by the river | 30 | £15 |
+| Mill valley | a worn valley: a town of 9 cottages and a tower block, with bare ground in the gaps; 4 family farms, 2 hill farms, Cluck Towers and a factory by the river | 24 | £15 |
 
 The estuary teaches "build on the nature you already have"; Mill valley teaches "a worn landscape costs you, and repairing it pays".
 
@@ -143,10 +149,14 @@ The estuary teaches "build on the nature you already have"; Mill valley teaches 
 | Three services, each with a clear job | Different habitats do different things: meadows feed farms, woods and lakes make places pleasant, wetlands clean water and stop floods. |
 | Supply = habitat × B; pressure lowers B | Worn-out nature delivers less. Development next to nature degrades the very services it relies on. |
 | Food depends on pollination and clean water | Nature feeds people: farms and fisheries need pollinators and healthy water. |
-| Waste bill, soaked up by touching nature | Nature-based solutions do real work: wetlands and woods beside a factory cut its clean-up costs. |
+| Waste bill, soaked up by touching nature; dearer when pollution is chronic | Nature-based solutions do real work: wetlands and woods beside a factory cut its clean-up costs, and letting pollution build up makes everything dearer. |
+| Soil health and fertiliser | Intensive farming wears soil out; nature that holds water and nutrients keeps farms productive without fertiliser. |
+| Bare ground, restorable at once | Worn-out land gives almost nothing; restoring it pays from day one. |
 | Happiness multiplies income | Green space is good for people, and happy people make the whole economy work better. |
 | Waste flows downhill into one water pollution number | Pollution travels; it is cheapest to stop at the source or beside the river. |
-| Bigger event damage; water protection | Nature-based defences (saltmarsh, fen, seagrass) protect homes and businesses for free. |
+| Event damage and wrecked tiles | Nature-based defences (saltmarsh, fen, seagrass) protect homes and businesses for free; unprotected ones are lost. |
+| Wind farms as reefs | Well-sited infrastructure can help nature too. |
+| Medals | A region must house and feed its people first; doing it well with nature is what earns the better medals. |
 | Housing target | A region needs homes as well as habitats; the question is where to put them. |
 | Ancient habitat can be lost but never restored | Some losses are permanent. Restoration helps but takes years and never fully replaces the old. |
 | Two maps | Starting with healthy nature is a gift; repairing worn nature is harder but still pays. |

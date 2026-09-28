@@ -50,13 +50,14 @@ src/
   session.js           GameSession: bridge between engine and scenes (state, selection, events)
   engine/              pure rules (no Phaser)
     state.js           createGame(), map parsing, recompute(), objective offer/choice
-    actions.js         legalTargets(), preview(), takeTurn(), endGame(), cloneState(), placement rules
-    intensity.js       pressure -> use intensity, B (PREDICTS), Primary loss, succession, intactness
+    actions.js         legalTargets(), preview(), takeTurn(), endGame() (score, medals), cloneState(), placement
+    intensity.js       pressure -> use intensity, B (PREDICTS), reserves and reefs, Primary loss, succession,
+                       soil health, intactness
     services.js        supply, services received (4 touching squares), topContributor(), deliveries()
     happiness.js       wellbeing and happiness
-    gdp.js             tile income and upkeep, happiness multiplier, counterfactuals (noNature, without[s])
-    waste.js           token waste flow (downhill, rivers, sinks into water pollution), cleaning, simple mode
-    events.js          events: tiles at risk, protection, damage, reports
+    gdp.js             tile income, waste bill + fertiliser, food, happiness multiplier, counterfactuals
+    waste.js           waste soaked up at source, bill rate, token flow (downhill, rivers, sinks), cleaning
+    events.js          events: tiles at risk, protection, damage, wrecked tiles (bare ground), reports
     objectives.js      objective evaluation
     market.js          stage piles, market shifting, menu unlocks
     grid.js            grid helpers (within = Chebyshev excluding self, ortho = N,E,S,W)
@@ -72,7 +73,8 @@ src/
                        Game (board, overlays, animations), UI (HUD, market, inspector, modals), End
   ui/                  layout.js (positions, RES, camera helpers), widgets.js (text, button, panel),
                        prefs.js (URL flags, localStorage: scores, hints, settings), describe.js
-tests/                 Vitest; helpers.js has tinyGame() for small hand-made maps
+tests/                 Vitest; helpers.js has tinyGame() for small hand-made maps; features.test.js covers
+                       bare ground, reefs, soil, wrecked tiles, new objectives and medals
 scripts/               bots.js, simulate.js, payoff.js (balance tools), draw-sprites.js (art generator)
 reports/               saved balance reports (generated; regenerate rather than edit)
 public/                favicon, web app manifest, home-screen icons
@@ -82,7 +84,7 @@ public/                favicon, web app manifest, home-screen icons
 
 `takeTurn` applies the action, then in order: market update, intensity, Primary loss, succession, supply, services received, happiness, GDP (plus counterfactuals), waste, event, advance turn. The `log` it returns drives all animations and messages (GDP floats, waste token moves, events, toasts).
 
-There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − food bought; each map has a housing target checked at the end. Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
+There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − fertiliser (farms with worn soil) − food bought. Floods and storm surges wreck the most exposed tiles they hit, leaving bare ground. Each map has a housing target checked at the end, and the end screen awards a medal (bronze: target met and everyone fed; silver: plus objectives; gold: plus the map's `goldScore`; platinum: a gold that beats your best on this device for this build). Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
 
 ## Display notes
 
@@ -93,4 +95,4 @@ There are three services: POL (pollination), GRN (green space and clean air), WA
 
 ## Variants and settings
 
-`src/data/config.js` holds `CONFIG` (and `MAP_DEFAULTS` for starting cash and housing target, which each map can set in its JSON). URL flags override it: `?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42`. The title screen offers the map, tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste is always on in normal play.
+`src/data/config.js` holds `CONFIG` (and `MAP_DEFAULTS` for starting cash, housing target and gold score, which each map can set in its JSON). High scores are kept in localStorage per commit (`__COMMIT__`, set in `vite.config.js`), so scores from older rules never count. URL flags override it: `?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42`. The title screen offers the map, tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste is always on in normal play.

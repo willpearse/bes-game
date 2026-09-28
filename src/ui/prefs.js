@@ -35,9 +35,14 @@ export function configFromUrl(search = window.location.search) {
   return cfg;
 }
 
+// The commit this build came from (set by vite.config.js). Scores are kept per commit: rules change between
+// commits, so a score set on an older build does not count.
+/* global __COMMIT__ */
+export const COMMIT = typeof __COMMIT__ !== 'undefined' ? __COMMIT__ : 'dev';
+
 export function variantKey(cfg) {
   const c = { ...CONFIG, ...cfg };
-  return [c.mapId, c.marketMode, c.wasteMode, c.happinessMode].join('-');
+  return [COMMIT, c.mapId, c.marketMode, c.wasteMode, c.happinessMode].join('-');
 }
 
 export function variantLabel(cfg) {
@@ -46,12 +51,24 @@ export function variantLabel(cfg) {
     MAPS[c.mapId]?.name ?? c.mapId,
     c.marketMode === 'market' ? 'Market' : 'Menu',
     c.wasteMode === 'tokens' ? 'Flowing waste' : 'Simple waste',
-    c.happinessMode === 'perTurn' ? 'Happiness each turn' : 'Happiness at end'
+    c.happinessMode === 'perTurn' ? 'Happiness each turn' : 'Happiness at end',
+    `build ${COMMIT}`
   ].join(' · ');
 }
 
 export function highScores(cfg) {
   return store.get(`gp_scores_${variantKey(cfg)}`, []);
+}
+
+// Your best score on this device for these settings and this commit (null if none yet).
+export function personalBest(cfg) {
+  const list = highScores(cfg);
+  return list.length ? list[0].score : null;
+}
+
+// Platinum: a gold medal that beats your previous best on this device (for these settings and this commit).
+export function isPlatinum(medal, score, previousBest) {
+  return medal === 'gold' && previousBest != null && score > previousBest;
 }
 
 // Adds a score; returns the new list and the rank (0-based) or -1 if it did not place.

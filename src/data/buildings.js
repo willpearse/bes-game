@@ -4,10 +4,11 @@
 // waste: tokens made each turn. Nature touching the tile soaks some up (see CONFIG.wasteAbsorbDivisor); the rest
 //   costs CONFIG.wasteBillPerToken each (the waste bill) and flows downhill.
 // food: food made each turn, interpreted like gdp (base, serviceBonus). Residents eat CONFIG.foodPerResident each.
-// recycles: waste soaked up each turn from its own and touching squares' buildings (before any bill).
+// soil: the tile has soil health (see CONFIG.soil); 'always' means it declines whatever nature touches it.
+// reef: sea squares touching the tile are protected like a marine reserve (rig-to-reef).
 // gdp: interpreted by engine/gdp.js. Keys:
 //   base, serviceBonus {service, divisor}, nearbyResidential {radius, max},
-//   wastePenalty {radius, amount}, pollutionPenalty {radius (null = always), divisor}
+//   wastePenalty {radius, amount}, pollutionPenalty {radius (null = always), divisor, max}
 export const BUILDINGS = {
   cottages: {
     name: 'Cottages', role: 'homes', landUse: 'urban', intensity: 'light', cost: 2,
@@ -24,9 +25,9 @@ export const BUILDINGS = {
   familyFarm: {
     name: 'Family farm', role: 'farm', landUse: 'cropland', intensity: 'light', cost: 3,
     gdp: { base: 1, serviceBonus: { service: 'POL', divisor: 2 } },
-    food: { base: 1, serviceBonus: { service: 'POL', divisor: 2 } }, waste: 1, residents: 0, pressure: 1,
+    food: { base: 1, serviceBonus: { service: 'POL', divisor: 2 } }, waste: 1, residents: 0, pressure: 1, soil: true,
     placement: 'landNextToBuilt', tags: ['farm'], uses: ['POL'],
-    tip: 'Earns more with pollinators nearby.'
+    tip: 'Earns more, and grows more food, with pollinators nearby. Its soil wears out without water-holding nature touching it.'
   },
   hillFarm: {
     name: 'Hill farm', role: 'sheep grazing', landUse: 'pasture', intensity: 'light', cost: 2,
@@ -36,9 +37,9 @@ export const BUILDINGS = {
   },
   cluckTowers: {
     name: 'Cluck Towers', role: 'intensive poultry', landUse: 'cropland', intensity: 'intense', cost: 7,
-    gdp: { base: 4 }, food: { base: 3 }, waste: 3, residents: 0, pressure: 2, nuisance: 2,
+    gdp: { base: 4 }, food: { base: 3 }, waste: 3, residents: 0, pressure: 2, nuisance: 2, soil: 'always',
     placement: 'landNextToBuilt', tags: ['farm'],
-    tip: 'A great many chickens. Neighbours may notice the smell.'
+    tip: 'A great many chickens and a lot of food. Neighbours may notice the smell, and the soil always wears out.'
   },
   conifer: {
     name: 'Conifer plantation', role: 'forestry', landUse: 'plantation', intensity: 'light', cost: 3,
@@ -84,31 +85,19 @@ export const BUILDINGS = {
     placement: 'landNextToBuilt', tags: [],
     tip: 'Big earner, big mess.'
   },
-  recycling: {
-    name: 'Recycling centre', role: 'waste', landUse: 'urban', intensity: 'light', cost: 3,
-    gdp: { base: 0 }, waste: 0, residents: 0, pressure: 1, recycles: 3,
-    placement: 'landNextToBuilt', tags: [],
-    tip: 'Soaks up to 3 waste a turn from buildings it touches, saving their waste bills.'
-  },
-  harbour: {
-    name: 'Harbour', role: 'port', landUse: 'urban', intensity: 'intense', cost: 7,
-    gdp: { base: 5 }, waste: 2, residents: 0, pressure: 2, nuisance: 2,
-    placement: 'seaNextToBuiltLand', noReserve: true, tags: [],
-    tip: 'Open sea, next to a built land tile.'
-  },
   fishingFleet: {
     name: 'Fishing fleet', role: 'fishing', landUse: 'urban', intensity: 'intense', cost: 4,
-    gdp: { base: 1, serviceBonus: { service: 'WAT', divisor: 2 }, pollutionPenalty: { radius: null, divisor: 5 } },
+    gdp: { base: 1, serviceBonus: { service: 'WAT', divisor: 2 }, pollutionPenalty: { radius: null, divisor: 5, max: 2 } },
     food: { base: 1, serviceBonus: { service: 'WAT', divisor: 2 } },
     waste: 0, residents: 0, pressure: 2,
     placement: 'seaAnywhere', noReserve: true, notBuiltNeighbour: true, tags: [], uses: ['WAT'],
-    tip: 'Catches more in clean water, such as near seagrass nurseries. Hates pollution.'
+    tip: 'Lands fish (food). Catches more in clean water, such as near seagrass nurseries. Hates pollution.'
   },
   windFarm: {
     name: 'Offshore wind farm', role: 'energy', landUse: 'urban', intensity: 'light', cost: 4,
     gdp: { base: 3 }, waste: 0, residents: 0, pressure: 0,
-    placement: 'seaAnywhere', notBuiltNeighbour: true, tags: [],
-    tip: 'Clean power from the breeze.'
+    placement: 'seaAnywhere', notBuiltNeighbour: true, reef: true, tags: [],
+    tip: 'Clean power from the breeze. Its foundations become a reef: sea squares touching it are protected.'
   }
 };
 

@@ -163,6 +163,13 @@ export function variantConfig(args) {
   if (args.waste) config.wasteMode = args.waste === 'simple' ? 'simple' : 'tokens';
   if (args.happiness) config.happinessMode = args.happiness === 'endGame' ? 'endGame' : 'perTurn';
   if (args.map) config.mapId = args.map;
+  // --set key=value[,key=value]: override any CONFIG number (or the map's housingTarget / goldScore) for tuning.
+  if (args.set) {
+    for (const pair of String(args.set).split(',')) {
+      const [k, v] = pair.split('=');
+      config[k] = Number(v);
+    }
+  }
   return config;
 }
 

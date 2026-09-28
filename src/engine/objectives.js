@@ -1,6 +1,6 @@
 // Objectives (section 12).
 import { OBJECTIVES } from '../data/objectives.js';
-import { within, isNature, isBuilt, isFarm, isMarine, isLand } from './grid.js';
+import { within, ortho, isNature, isBuilt, isFarm, isMarine, isLand, isResidential } from './grid.js';
 import { intactness, reserveProtected } from './intensity.js';
 import { wasteTokensAt } from './waste.js';
 
@@ -63,9 +63,19 @@ export function evaluateObjective(state, id) {
       return { met: share >= o.value - 1e-9, progress: `${Math.round(share * 100)}%` };
     }
     case 'coastGuard': {
-      const coastal = state.cells.filter((c) => isBuilt(c) && within(state, c.row, c.col, o.radius).some(isMarine));
+      const coastal = state.cells.filter((c) => isBuilt(c) && isLand(c) && within(state, c.row, c.col, o.radius).some(isMarine));
       const ok = coastal.filter((c) => (c.received?.[o.service] ?? 0) >= o.min).length;
       return { met: coastal.length >= o.atLeast && ok === coastal.length, progress: `${ok}/${coastal.length} safe` };
+    }
+    case 'buildingTouchingNature': {
+      const best = Math.max(0, ...state.cells.filter((c) => c.building === o.building)
+        .map((c) => ortho(state, c.row, c.col).filter(isNature).length));
+      return { met: best >= o.min, progress: `${best}/${o.min}` };
+    }
+    case 'homesNearBuilding': {
+      const homes = state.cells.filter(isResidential);
+      const ok = homes.filter((h) => within(state, h.row, h.col, o.radius).some((c) => c.building === o.building)).length;
+      return { met: homes.length > 0 && ok === homes.length, progress: `${ok}/${homes.length}` };
     }
     case 'noEventHits':
       return { met: state.stats.eventHits === 0, progress: `${state.stats.eventHits} hit` };

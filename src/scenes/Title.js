@@ -201,7 +201,7 @@ export class Title extends Phaser.Scene {
     const scores = highScores(this.cfg);
     this.scoreVariant.setText(variantLabel(this.cfg));
     this.scoreList.setText(scores.length
-      ? scores.slice(0, 6).map((s, i) => `${i + 1}. £${Math.round(s.score)} (seed ${s.seed})`).join('    ')
+      ? scores.slice(0, 6).map((s, i) => `${i + 1}. £${Math.round(s.score)}${s.medal ? ` ${s.medal}` : ''} (seed ${s.seed})`).join('    ')
       : 'No scores yet for these settings.');
   }
 

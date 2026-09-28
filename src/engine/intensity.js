@@ -3,7 +3,7 @@ import { CONFIG, PRESSURE_TO_INTENSITY, SUCCESSION, RESERVE_SEAGRASS_AGE } from 
 import { PREDICTS_B } from '../data/predicts.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { within, isBuilt, isNature, isMarine, isLand } from './grid.js';
+import { within, ortho, isBuilt, isNature, isMarine, isLand } from './grid.js';
 import { wasteTokensAt } from './waste.js';
 
 const cfg = (state) => state.config ?? CONFIG;
@@ -21,11 +21,30 @@ export function cellB(cell) {
   return biodiversityValue(cell.landUse, cell.intensity);
 }
 
-// Is a marine cell protected by a reserve (the reserve cell itself or any within 1)?
+// Is a marine cell protected: by a reserve (the reserve cell itself or any within 1), or by a reef
+// (a building with reef: true, such as a wind farm, touching it N, E, S or W)?
 export function reserveProtected(state, cell) {
   if (!isMarine(cell)) return false;
   if (cell.reserve) return true;
-  return within(state, cell.row, cell.col, 1).some((c) => c.reserve);
+  if (within(state, cell.row, cell.col, 1).some((c) => c.reserve)) return true;
+  return ortho(state, cell.row, cell.col).some((c) => isBuilt(c) && BUILDINGS[c.building].reef);
+}
+
+// Soil health on farms (between services received and GDP). Returns the list of changes.
+export function updateSoil(state) {
+  const c = cfg(state);
+  const changes = [];
+  for (const cell of state.cells) {
+    if (!isBuilt(cell) || cell.soil == null) continue;
+    const rule = BUILDINGS[cell.building].soil;
+    const declines = rule === 'always' || (cell.received?.WAT ?? 0) < c.soilWater;
+    const next = Math.max(0, Math.min(c.soilMax, cell.soil + (declines ? -1 : 1)));
+    if (next !== cell.soil) {
+      changes.push({ row: cell.row, col: cell.col, from: cell.soil, to: next });
+      cell.soil = next;
+    }
+  }
+  return changes;
 }
 
 export function pressureOn(state, cell) {

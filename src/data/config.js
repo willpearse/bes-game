@@ -25,13 +25,23 @@ export const CONFIG = {
   happinessGdpFactor: 0.1,
   happinessNeutral: 5,
   noResidentsHappiness: 5,
-  eventDamageMultiplier: 8,   // damage to an unprotected tile = max(minimum, multiplier x its GDP this turn)
-  eventDamageMinimum: 4,
+  eventDamageMultiplier: 4,   // damage to an unprotected tile = max(minimum, multiplier x its GDP this turn)
+  eventDamageMinimum: 2,
+  eventDestroyShare: 0.2,     // floods and storm surges wreck this share of the tiles they hit (rounded), most exposed first
 
   // Waste bill: nature touching a building soaks up 1 waste per wasteAbsorbDivisor water service it receives;
   // every token left over costs wasteBillPerToken and flows downhill.
   wasteAbsorbDivisor: 2,
   wasteBillPerToken: 1,
+  // Chronic pollution makes clean-up dearer: +£1 a token per wasteBillPollutionStep of water pollution, up to wasteBillMax.
+  wasteBillPollutionStep: 40,
+  wasteBillMax: 2,
+
+  // Soil health on farms that have it: 0..soilMax. Each turn it falls by 1 if the farm receives less than soilWater
+  // water service (or always, for intensive farms), and recovers by 1 otherwise. Each missing point costs fertiliserPerPoint.
+  soilMax: 3,
+  soilWater: 2,
+  fertiliserPerPoint: 1,
 
   // Food: each resident eats foodPerResident a turn; any shortfall is bought in at foodImportPrice a unit.
   foodPerResident: 1,
@@ -46,8 +56,12 @@ export const CONFIG = {
 // Used when a map does not set its own. A config value (tests, URL) still beats the map's.
 export const MAP_DEFAULTS = {
   startingCash: 10,
-  housingTarget: 16
+  housingTarget: 16,
+  goldScore: 600      // score needed (with silver) for a gold medal; about the greedy bot's average on the map
 };
+
+// Medals, best first. Platinum (a personal best on this device) is awarded by the UI, not the engine.
+export const MEDALS = ['gold', 'silver', 'bronze'];
 
 export const PRESSURE_TO_INTENSITY = [
   { min: 3, intensity: 'intense' },

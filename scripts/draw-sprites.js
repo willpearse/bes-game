@@ -143,6 +143,16 @@ H.meadow = () => {
   return { rows: cv.rows(), veg: '5678de94', bare: ['3', '2'], ground: '8' };
 };
 
+// Bare ground: compacted, trampled earth with rubble and a few stubborn weeds.
+H.bare = () => {
+  const cv = new Canvas('3');
+  scatter(71, 6, 10, 4).forEach(([x, y]) => cv.ellipse(x, y, 4, 2.5, '2'));
+  scatter(72, 9, 6).forEach(([x, y]) => cv.ellipse(x, y, 1.5, 1, 'f').set(x - 1, y - 1, 'c'));
+  scatter(73, 7, 5).forEach(([x, y]) => cv.set(x, y, '1'));
+  scatter(74, 4, 7).forEach(([x, y]) => tuft(cv, x, y, '6'));
+  return { rows: cv.rows(), veg: '6', bare: ['2', '3'], ground: '3' };
+};
+
 H.moorland = () => {
   const cv = new Canvas('6');
   scatter(21, 7, 9, 3).forEach(([x, y]) => cv.ellipse(x, y, 4, 3, '9').ellipse(x - 1, y - 1, 2, 1, 'd'));
@@ -432,28 +442,6 @@ B.factory = () => {
   cv.rect(12, 25, 5, 4, '2');
   cv.outline();
   cv.circle(24, 3, 2, 'f').circle(28, 1, 1.5, 'f');
-  return cv.rows();
-};
-
-B.recycling = () => {
-  const cv = new Canvas();
-  const bin = (x, c) => { cv.rrect(x, 16, 8, 12, 2, c); cv.rrect(x - 1, 14, 10, 3, 1, c); cv.rect(x + 3, 13, 3, 1, '0'); };
-  bin(2, '6'); bin(12, 'b'); bin(22, 'e');
-  cv.outline();
-  // Recycling arrows.
-  cv.circle(16, 6, 4.5, '6').circle(16, 6, 2.5, '.');
-  cv.poly([[19, 2], [22, 4], [19, 6]], '6').poly([[13, 10], [10, 8], [13, 6]], '6');
-  return cv.rows();
-};
-
-B.harbour = () => {
-  const cv = new Canvas();
-  cv.rect(0, 12, N, 6, '2');
-  for (let x = 1; x < N; x += 4) cv.rect(x, 12, 1, 6, '1');
-  for (const x of [3, 13, 23]) cv.rect(x, 18, 2, 6, '1');
-  cv.rect(22, 1, 2, 11, 'e').rect(12, 1, 12, 2, 'e').line(14, 3, 14, 8, 'f').rect(13, 8, 3, 2, 'f');
-  cv.rrect(5, 24, 14, 5, 2, 'd').rect(9, 21, 5, 3, '4');
-  cv.outline();
   return cv.rows();
 };
 

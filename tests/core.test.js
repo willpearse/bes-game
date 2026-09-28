@@ -56,9 +56,9 @@ describe('createGame', () => {
     expect(s.cash).toBe(10);
     expect(s.turn).toBe(1);
     expect(s.market.slots).toHaveLength(6);
-    expect(s.market.piles.A).toHaveLength(16);
-    expect(s.market.piles.B).toHaveLength(16);
-    expect(s.market.piles.C).toHaveLength(16);
+    expect(s.market.piles.A).toHaveLength(15);
+    expect(s.market.piles.B).toHaveLength(14);
+    expect(s.market.piles.C).toHaveLength(14);
     expect(s.events.map((e) => e.turn)).toEqual([8, 16, 24]);
     expect(new Set(s.events.map((e) => e.id)).size).toBe(3);
     expect(s.objectives).toHaveLength(2);
@@ -203,7 +203,7 @@ describe('maps', () => {
     const s = createGame({ seed: 1, mapId: 'millValley' });
     expect(s.mapName).toBe('Mill valley');
     expect(s.cash).toBe(15);
-    expect(s.housingTarget).toBe(30);
+    expect(s.housingTarget).toBe(24);
     expect(s.residents).toBeGreaterThan(10);
     const hill = s.cells.find((c) => c.building === 'hillFarm');
     expect(hill.habitat).toBe('moorland'); // { building, habitat } form of startingBuildings
@@ -223,7 +223,7 @@ describe('maps', () => {
 describe('map defaults', () => {
   it('uses the map values when the config is the full CONFIG (as the title screen passes it)', () => {
     const s = createGame({ seed: 1, config: { ...CONFIG, mapId: 'millValley' } });
-    expect(s).toMatchObject({ cash: 15, housingTarget: 30 });
+    expect(s).toMatchObject({ cash: 15, housingTarget: 24 });
     const t = tinyGame(['#g']);
     expect(t).toMatchObject({ cash: 10, housingTarget: 16 }); // MAP_DEFAULTS for a map without its own
   });

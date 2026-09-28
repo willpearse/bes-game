@@ -4,6 +4,7 @@
 // Options: --games N (default 100), --bot random|greedy|nature|balanced|both|all or a comma list
 //          (default both = random and greedy), --seed S (first seed, default 1),
 //          --map estuary|millValley, --market menu, --waste simple, --happiness endGame (as the URL flags).
+//          --set key=value,key=value overrides CONFIG numbers for tuning (for example --set wasteBillMax=2).
 import { SERVICE_KEYS } from '../src/data/services.js';
 import { BOTS, BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.js';
 
@@ -45,6 +46,8 @@ for (const bot of bots) {
   for (const k of SERVICE_KEYS) console.log(row(`  ${k} contribution (£)`, results.map((f) => f.perService[k])));
   console.log(row('Food bought (£)', results.map((f) => f.foodCost)));
   console.log(row('Waste bills (£)', results.map((f) => f.wasteBill)));
+  console.log(row('Fertiliser (£)', results.map((f) => f.fertiliser)));
+  console.log(row('Tiles wrecked by events', results.map((f) => f.destroyed)));
   console.log(row('Water pollution at end', results.map((f) => f.pollution)));
   console.log(row('Residents at end', results.map((f) => f.residents)));
   console.log(row('Housing penalty (£)', results.map((f) => f.housingPenalty)));
@@ -54,4 +57,9 @@ for (const bot of bots) {
   console.log(row('Primary cells lost', results.map((f) => f.primaryLost)));
   console.log(row('Intactness at end', results.map((f) => f.endIntactness * 100), 1, '%'));
   console.log(row('Objectives met', results.map((f) => f.objectives.filter((o) => o.met).length)));
+  const share = (pred) => `${Math.round((100 * results.filter(pred).length) / results.length)}%`;
+  console.log(`  Medals: none ${share((f) => !f.medal)}, bronze ${share((f) => f.medal === 'bronze')}, ` +
+    `silver ${share((f) => f.medal === 'silver')}, gold ${share((f) => f.medal === 'gold')}` +
+    `  (housing met ${share((f) => f.medalChecks.housing)}, fed at end ${share((f) => f.medalChecks.fed)}, ` +
+    `objectives met ${share((f) => f.medalChecks.objectives)}, gold score ${share((f) => f.medalChecks.score)})`);
 }

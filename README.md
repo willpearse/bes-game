@@ -14,6 +14,17 @@ npm run simulate -- --games 500 --bot all   # random, greedy, nature, balanced
 npm run payoff -- --games 300               # building pay-off with and without nature, vs theory
 ```
 
+## How you win
+
+Each game lasts 24 turns. Your score is the GDP you earned (after waste bills, fertiliser, food bought and event damage), plus £50 for each objective met, minus £10 for each resident short of the map's housing target. The end screen also awards a medal:
+
+- **Bronze**: the housing target is met and everyone is fed on the last turn.
+- **Silver**: bronze, and both objectives are met.
+- **Gold**: silver, and a score above the map's gold score (about what a build-everything bot averages).
+- **Platinum**: a gold that beats your own best score on this device.
+
+High scores are kept in the browser's local storage for each map, each setting and each build (commit), so scores from older rules never count.
+
 ## Variants
 
 The title screen offers the map (River estuary or Mill valley), the tile mode (market or menu), when happiness counts, the nature-at-work animations, the seed, and a choice of 2 objectives from the 4 the seed offers. Flowing waste is always on in normal play, but every variant can still be switched by URL query for testing:

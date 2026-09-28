@@ -4,7 +4,9 @@ import { UI as C, OVERLAY_COLOURS } from '../art/palette.js';
 import { SERVICES, SERVICE_KEYS } from '../data/services.js';
 import { W, setupCamera } from '../ui/layout.js';
 import { text, button, panel, money } from '../ui/widgets.js';
-import { addHighScore, variantLabel } from '../ui/prefs.js';
+import { addHighScore, variantLabel, personalBest, isPlatinum } from '../ui/prefs.js';
+
+const MEDAL_COLOURS = { platinum: '#b8e6f5', gold: '#e8b53a', silver: '#d4d4dc', bronze: '#d08a4a' };
 
 export class End extends Phaser.Scene {
   constructor() {
@@ -20,7 +22,8 @@ export class End extends Phaser.Scene {
     const f = st.final;
     setupCamera(this);
     this.cameras.main.setBackgroundColor(C.bg);
-    const entry = { score: f.score, natureShare: f.natureShare, seed: st.seed, date: Date.now() };
+    const platinum = isPlatinum(f.medal, f.score, personalBest(st.config));
+    const entry = { score: f.score, natureShare: f.natureShare, seed: st.seed, date: Date.now(), medal: platinum ? 'platinum' : f.medal };
     const { list, rank } = addHighScore(st.config, entry);
 
     text(this, 40, 24, `${st.mapName}: after ${st.config.turns} turns`, { size: 26, bold: true, color: C.gold });
@@ -30,10 +33,19 @@ export class End extends Phaser.Scene {
     panel(this, 40, 96, 380, 250);
     text(this, 60, 108, 'Final score', { size: 16, color: C.dim });
     text(this, 60, 128, money(f.score), { size: 44, bold: true, color: C.gold });
+    const medal = platinum ? 'platinum' : f.medal;
+    const medalName = { platinum: 'Platinum!', gold: 'Gold medal', silver: 'Silver medal', bronze: 'Bronze medal' }[medal] ?? 'No medal';
+    const next = platinum ? 'Your own world record: your best ever gold on this device.'
+      : medal === 'gold' ? 'Beat your best score here for platinum.'
+        : medal === 'silver' ? `Gold needs a score of ${money(f.goldScore)}.`
+          : medal === 'bronze' ? 'Silver needs both objectives met.'
+            : `Bronze needs ${f.housingTarget} residents and everyone fed at the end.`;
+    text(this, 250, 118, medalName, { size: 18, bold: true, color: MEDAL_COLOURS[medal] ?? C.dim });
+    text(this, 250, 142, next, { size: 11, color: C.dim, wrap: 160 });
     const lines = [
       `GDP earned: ${money(f.gdp)}`,
-      `   after waste bills ${money(f.wasteBill)} and food bought ${money(f.foodCost)}`,
-      `Event damage: −${money(f.eventDamage)}`,
+      `   after waste bills ${money(f.wasteBill)}, fertiliser ${money(f.fertiliser)}, food ${money(f.foodCost)}`,
+      `Event damage: −${money(f.eventDamage)}${f.destroyed ? ` (${f.destroyed} tile${f.destroyed === 1 ? '' : 's'} wrecked)` : ''}`,
       f.housingShortfall > 0
         ? `✘ Homes ${f.residents}/${f.housingTarget}: −${money(f.housingPenalty)}`
         : `✔ Homes ${f.residents}/${f.housingTarget}: target met`

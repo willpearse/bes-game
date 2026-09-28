@@ -169,7 +169,7 @@ What stands out, compared with the five-service version:
 ### Food, housing, waste bills and a second map (designer's changes)
 
 45. **Broken numbers fixed.** Water pollution now disperses 10% a turn after seagrass cleaning (`pollutionDecay`); before, it only ever grew and reached about 200, which wiped out fleets and seaside holiday parks. The big earners that ignore nature cost more: factory 5 → 8, business park 4 → 6 (homes bonus max 3 → 2), Cluck Towers 5 → 7, harbour 5 → 7. After a first run, the fishing fleet (cost 4, base 1) and Cluck Towers (base 4, food 3) were trimmed because food made them the best buildings in the game.
-46. **Waste bill replaces upkeep.** Each turn, the nature touching a building soaks up floor(WAT received / 2) of its waste (`wasteAbsorbDivisor`), then touching recycling centres soak up to 3 each. Each token left over costs £1 (`wasteBillPerToken`) and becomes a token that flows downhill as before. Recycling centres use any spare capacity on tokens on their own and touching squares. Because soaking up uses the received WAT, the counterfactuals automatically count waste treatment as part of nature's contribution. There is no other running cost: clean buildings (wind farm, hill farm, conifer, school) cost nothing to run.
+46. **Waste bill replaces upkeep.** Each turn, the nature touching a building soaks up floor(WAT received / 2) of its waste (`wasteAbsorbDivisor`), then touching recycling centres soak up to 3 each (recycling centres were later removed: 54). Each token left over costs £1 (`wasteBillPerToken`) and becomes a token that flows downhill as before. Recycling centres use any spare capacity on tokens on their own and touching squares. Because soaking up uses the received WAT, the counterfactuals automatically count waste treatment as part of nature's contribution. There is no other running cost: clean buildings (wind farm, hill farm, conifer, school) cost nothing to run.
 47. **Crowding removed** (designer's decision). The housing target now does the job of limiting or driving growth, and nature near homes already rewards spacing. `?pressure=` is gone.
 48. **Bigger hazards.** Event damage is max(£4, 8 × tile GDP) (was max(£2, 4 × GDP)).
 49. **Food.** Each resident eats 1 food a turn (`foodPerResident`). Family farms make 1 + POL/2, hill farms 1, Cluck Towers 3, fishing fleets 1 + WAT/2. Any shortfall is bought at £1 a unit (`foodImportPrice`) and taken off that turn's GDP. Surplus food is not sold (farms already earn income). `state.food` = { made, need, bought, cost } for the HUD; totals in `stats.foodCost`.
@@ -198,5 +198,37 @@ What stands out, compared with the five-service version:
 - **Mill valley is harsh and restoration cannot fix it.** Waste bills take 33 to 47% of income, about 75% of tiles at risk are hit in events, happiness sits near 4 and water pollution reaches about 150, which wipes out fishing fleets. The dense town leaves no squares next to homes to restore, so the map's lesson ("repairing worn nature pays") does not come through yet.
 - **Events now matter**: 16% of income on the estuary and about 24% on Mill valley. Offshore wind farms and harbours on Mill valley lose money overall, because storm surges hit them and nothing at sea can protect them unless seagrass is next door.
 - The recycling centre shows as "never pays back" in the pay-off tables because its savings appear in other buildings' waste bills, which the table does not credit to it.
+
+### Bare ground, soil, wrecked tiles, medals and a leaner sea (designer's changes)
+
+53. **Bare ground** (`bare`, map code `b`): worn-out, compacted land. It has a fixed PREDICTS land use of urban (`landUse` in `habitats.js`), so its B is 0.15 to 0.4, and supplies POL 0, GRN 1, WAT 0. It can be built on, and restored to woodland, meadow or (next to water) wetland, so restoring it is an immediate gain. Mill valley now has 7 bare squares in and around the town (one cottage became bare ground: 9 cottages and a tower block, 13 residents), and its housing target is 24 (was 30), so there is less pressure to build and a wrecked home hurts less. Every service still recovers at the same pace after restoration (see TODO: ecosystem variability).
+54. **Recycling centre and harbour removed.** Nature is now the only way to soak up waste; the harbour did little but pollute. They are gone from the market piles and the menu.
+55. **Soil health.** Family farms and Cluck Towers have `soil` (0 to 3, starting at 3). After services are worked out each turn, soil falls by 1 if the farm receives less than 2 water service (Cluck Towers: always) and otherwise recovers by 1. Each missing point costs £1 of fertiliser a turn, added to the tile's costs (not multiplied by happiness). Hill farms are exempt. Soil is not part of the counterfactuals (it depends on history, not just this turn's services), so nature's contribution is a slight underestimate there.
+56. **Chronic pollution makes clean-up dearer.** The waste bill per token is £1 + £1 per 40 water pollution, capped at £2 (`wasteBillPollutionStep`, `wasteBillMax`). A first try (per 20, cap £3) made Mill valley unwinnable for every bot (scores below zero), so it was softened.
+57. **Events: 4 × GDP and wrecked tiles.** Damage is back to max(£2, 4 × tile GDP). Floods and storm surges (`destroys: true`) also wreck round(hits × 0.2) of the tiles they hit: the most exposed first (largest shortfall of the protecting service), ties broken by the seeded RNG. A wrecked tile becomes bare ground and its building is gone; the board is recomputed at once so homes, food and happiness update. The event pop-up lists the wrecked tiles, and a dust cloud and "Wrecked!" label mark them. Heatwaves and pest outbreaks only cost money.
+58. **The sea (option A).** Storm surges only put land tiles at risk (`landOnly`). Wind farms are reefs (`reef: true`): sea squares touching them are protected like a marine reserve. The fishing fleet's pollution penalty is capped at −2. See TODO: check that the sea is still fun.
+59. **Medals.** `endGame` works out `final.medal`: bronze if the housing target is met and nobody is short of food on the last turn; silver if all chosen objectives are also met; gold if the score also reaches the map's `goldScore` (estuary 660, Mill valley 440: about the greedy bot's average score). Platinum is worked out by the End screen: a gold that beats your previous best on this device for these settings and this build. High scores are stored in localStorage (the modern stand-in for a cookie) under a key that includes the commit (`__COMMIT__`, defined in `vite.config.js` from `GITHUB_SHA` or `git rev-parse`), so scores from other builds never count.
+60. **Two new objectives in circulation:** Forest school (a school with at least 2 nature squares touching it) and Healthy town (every home within 4 of a hospital). Coast guard now counts land tiles only. Schools and hospitals stay, mainly for variety.
+
+#### Balance after 53 to 60
+
+`npm run simulate -- --games 200 --bot all --map ...` (gold rates below used a gold score of 600 on both maps, before the map values were set):
+
+| Map | Bot | Score | Waste bills | Fertiliser | Event damage | Tiles wrecked | Medals (none / bronze / silver / gold) |
+|---|---|---|---|---|---|---|---|
+| Estuary | random | £26 | £68 | £17 | £12 | 0.4 | 100 / 0 / 0 / 0% |
+| Estuary | greedy | £659 | £81 | £23 | £58 | 0.8 | 67 / 32 / 0 / 1% |
+| Estuary | nature | £457 | £79 | £59 | £46 | 1.0 | 33 / 65 / 2 / 1% |
+| Estuary | balanced | £695 | £122 | £50 | £66 | 1.2 | 47 / 53 / 0 / 1% |
+| Mill valley | random | −£527 | £776 | £183 | £56 | 1.3 | 100 / 0 / 0 / 0% |
+| Mill valley | greedy | £438 | £599 | £76 | £85 | 1.6 | 97 / 4 / 0 / 0% |
+| Mill valley | nature | £120 | £646 | £119 | £83 | 1.5 | 43 / 56 / 2 / 0% |
+| Mill valley | balanced | £270 | £764 | £135 | £125 | 1.8 | 91 / 9 / 1 / 0% |
+
+- **Estuary:** the nature-aware builder (balanced) scores highest, greedy next, and the nature bot earns a medal most often (it keeps people fed). Greedy often misses bronze because it builds homes late without farms to feed them.
+- **Mill valley:** greedy still scores highest, but almost never earns a medal (fed at the end in only 9% of games); the nature bot earns bronze in 56% of games. Waste bills are the dominant cost (56 to 157% of income in the pay-off report), and cottages, Cluck Towers and the factory barely break even there.
+- **Silver and gold are rare** because the bots almost never meet both objectives (2 to 16% of games).
+- **Wrecked tiles** are about 1 to 2 a game: visible but not crippling.
+- **Sea:** wind farms now pay back in about a turn and are never hit; fleets do well on the estuary (pay-off about £87) but poorly on polluted Mill valley (about £39).
 
 Open questions and future work are in `TODO.md`.

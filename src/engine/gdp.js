@@ -3,7 +3,7 @@ import { CONFIG } from '../data/config.js';
 import { BUILDINGS, FARM_WASTE_GDP_PENALTY } from '../data/buildings.js';
 import { SERVICE_KEYS } from '../data/services.js';
 import { within, idx, isBuilt, isMarine, isResidential, isFarm, round1 } from './grid.js';
-import { wasteTokensAt, wasteRelease } from './waste.js';
+import { wasteTokensAt, wasteRelease, wasteBillRate } from './waste.js';
 import { happiness, totalResidents } from './happiness.js';
 import { emptyServices } from './services.js';
 
@@ -28,7 +28,7 @@ export function tileIncome(state, cell, recv = defaultRecv) {
   if (g.pollutionPenalty) {
     const rad = g.pollutionPenalty.radius;
     const applies = rad == null || within(state, cell.row, cell.col, rad).some(isWaterSink);
-    if (applies) v -= Math.floor(state.pollution / g.pollutionPenalty.divisor);
+    if (applies) v -= Math.min(g.pollutionPenalty.max ?? Infinity, Math.floor(state.pollution / g.pollutionPenalty.divisor));
   }
   if (isFarm(cell)) v -= FARM_WASTE_GDP_PENALTY * wasteTokensAt(state, cell);
   return Math.max(0, v);
@@ -53,10 +53,22 @@ export function foodBalance(state, recv = defaultRecv) {
   return { made, need, bought, cost: round1(bought * c.foodImportPrice) };
 }
 
-// Net GDP of one built tile this turn (income minus waste bill), before the happiness multiplier. Can be negative.
+// Fertiliser bought by a farm with worn soil: fertiliserPerPoint for each point below soilMax.
+export function fertiliser(state, cell) {
+  const c = cfg(state);
+  return cell.soil == null ? 0 : (c.soilMax - cell.soil) * c.fertiliserPerPoint;
+}
+
+// Running costs of one built tile this turn: its waste bill plus any fertiliser.
+function tileCosts(state, cell, released) {
+  return round1(released * wasteBillRate(state) + fertiliser(state, cell));
+}
+
+// Net GDP of one built tile this turn (income minus waste bill and fertiliser), before the happiness multiplier.
+// Can be negative.
 export function tileGdp(state, cell, recv = defaultRecv) {
   const r = wasteRelease(state, recv).get(idx(state, cell.row, cell.col));
-  return tileIncome(state, cell, recv) - r.released * cfg(state).wasteBillPerToken;
+  return round1(tileIncome(state, cell, recv) - tileCosts(state, cell, r.released));
 }
 
 export function happinessMultiplier(state, H) {
@@ -65,9 +77,9 @@ export function happinessMultiplier(state, H) {
 }
 
 // Projected GDP for the current board. Returns { raw, total, income, H, perTile, food, bill }.
-// income is the sum of tile income before the happiness multiplier.
+// income is the sum of tile income before the happiness multiplier; bill sums waste bills and fertiliser.
 // perTile: [{ cell, gdp, income, bill, released }], where gdp = income - bill.
-// total = sum of income x happiness multiplier (perTurn mode) - waste bills - food bought.
+// total = sum of income x happiness multiplier (perTurn mode) - bills - food bought.
 // raw is the same without the multiplier.
 export function projectGdp(state, recv = defaultRecv) {
   const c = cfg(state);
@@ -84,7 +96,7 @@ export function projectGdp(state, recv = defaultRecv) {
     if (!isBuilt(cell)) continue;
     const income = tileIncome(state, cell, recv);
     const released = release.get(idx(state, cell.row, cell.col)).released;
-    const b = released * c.wasteBillPerToken;
+    const b = tileCosts(state, cell, released);
     bill += b;
     incomeSum += income;
     raw += income - b;

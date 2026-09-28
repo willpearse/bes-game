@@ -6,7 +6,7 @@ import { drawTile, updateMarket, menuUnlocked } from '../src/engine/market.js';
 import { resolveEvent, tilesAtRisk, upcomingEvent, eventDamageFor } from '../src/engine/events.js';
 import { evaluateObjective, evaluateObjectives } from '../src/engine/objectives.js';
 import { tileGdp, tileIncome, tileFood, foodBalance, projectGdp } from '../src/engine/gdp.js';
-import { wasteRelease, resolveWasteTokens } from '../src/engine/waste.js';
+import { wasteRelease, wasteBillRate } from '../src/engine/waste.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 
@@ -52,7 +52,7 @@ describe('market', () => {
     expect(s.turn).toBe(9);
     expect(s.stage).toBe('B');
     expect(s.market.piles.A).toHaveLength(0);
-    expect(s.market.piles.B).toHaveLength(16);
+    expect(s.market.piles.B).toHaveLength(14);
     const nextB = s.market.piles.B[0];
     s = takeTurn(s, { type: 'pass' }).state;
     expect(s.market.slots[5]).toBe(nextB);
@@ -60,7 +60,7 @@ describe('market', () => {
     expect(s.turn).toBe(17);
     expect(s.stage).toBe('C');
     expect(s.market.piles.B).toHaveLength(0);
-    expect(s.market.piles.C).toHaveLength(16);
+    expect(s.market.piles.C).toHaveLength(14);
   });
   it('draws from the next pile when the current one runs out, else null', () => {
     const s = createGame({ seed: 11 });
@@ -103,12 +103,9 @@ describe('placement and restoration', () => {
     expect(tg.length).toBeGreaterThan(10);
     tg.forEach((t) => expect(['moorland', 'heath']).toContain(at(s, t.row, t.col).habitat));
   });
-  it('sea tiles: fleets anywhere at sea, harbours next to built land', () => {
+  it('sea tiles: fleets anywhere at sea', () => {
     const s = tinyGame(['#o', 'oo'], { config: { startingCash: 50 } });
     expect(legalTargets(s, { type: 'build', building: 'fishingFleet' })).toHaveLength(3);
-    s.stage = 'B';
-    const h = legalTargets(s, { type: 'build', building: 'harbour' });
-    expect(h.map((t) => `${t.row},${t.col}`).sort()).toEqual(['0,1', '1,0']);
     // A fishing fleet does not count as a built neighbour.
     const s2 = tinyGame(['g', 'o'], { buildings: {}, config: { startingCash: 50 } });
     s2.cells[0].kind = 'nature';
@@ -236,15 +233,15 @@ describe('GDP formulas', () => {
     s.pollution = 7;
     expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3 - 1);
     s.pollution = 30;
-    expect(tileGdp(s, at(s, 1, 1))).toBe(0);
+    expect(tileGdp(s, at(s, 1, 1))).toBe(1 + 3 - 2); // the pollution penalty is capped at 2
   });
   it('a loss-making tile shows a negative earning, and cash never goes below 0', () => {
     const s = tinyGame(['oPo'], { buildings: { P: 'holidayPark' }, config: { startingCash: 0 } });
-    s.pollution = 50; // wipes out its income; its waste bill is still due
+    s.pollution = 50; // wipes out its income; its waste bill is still due, at the chronic rate of £2 a token
     const { state, log } = takeTurn(s, { type: 'pass' });
     const g = log.find((l) => l.type === 'gdp');
-    expect(g.earnings).toEqual([{ row: 0, col: 1, amount: -1 }]);
-    expect(state.score).toBe(-1);
+    expect(g.earnings).toEqual([{ row: 0, col: 1, amount: -2 }]);
+    expect(state.score).toBe(-2);
     expect(state.cash).toBe(0);
   });
   it('waste bills and food bought are not multiplied by happiness', () => {
@@ -266,25 +263,23 @@ describe('waste bill', () => {
   it('nature touching a building soaks up 1 waste per 2 water it receives', () => {
     const s = tinyGame(['ofo', 'fXf', 'ooo'], { buildings: { X: 'factory' } });
     // Three light fens: WAT 3 * 3 * 0.8 = 7.2 -> 6 -> soaks up 3 of the factory's 3.
-    expect(wasteRelease(s).get(4)).toEqual({ made: 3, absorbed: 3, recycled: 0, released: 0 });
+    expect(wasteRelease(s).get(4)).toEqual({ made: 3, absorbed: 3, released: 0 });
     expect(tileGdp(s, at(s, 1, 1))).toBe(6);
     const bare = tinyGame(['oXo'], { buildings: { X: 'factory' } });
     expect(tileGdp(bare, at(bare, 0, 1))).toBe(6 - 3);
     // With no nature at all (the counterfactual), nothing is soaked up.
     expect(wasteRelease(s, () => ({ POL: 0, GRN: 0, WAT: 0 })).get(4).released).toBe(3);
   });
-  it('recycling centres soak up waste from touching buildings, then clean tokens with what is left', () => {
-    const s = tinyGame(['oXRo'], { buildings: { X: 'factory', R: 'recycling' } });
-    const r = wasteRelease(s);
-    expect(r.get(1)).toMatchObject({ made: 3, recycled: 3, released: 0 });
-    expect(r.spare.get(2)).toBe(0);
-    const t = tinyGame(['o#Ro'], { buildings: { R: 'recycling' } });
-    at(t, 0, 3).waste = 0;
-    expect(wasteRelease(t).spare.get(2)).toBe(2); // the cottage's 1 waste used 1 of 3
-    at(t, 0, 2).waste = 5;
-    const rec = resolveWasteTokens(t, []);
-    expect(rec.recycled).toBe(1 + 2);
-    expect(at(t, 0, 2).waste).toBe(3);
+  it('gets dearer as water pollution becomes chronic, up to £2 a token', () => {
+    const s = tinyGame(['oXo'], { buildings: { X: 'factory' } });
+    expect(wasteBillRate(s)).toBe(1);
+    s.pollution = 39.9;
+    expect(wasteBillRate(s)).toBe(1);
+    s.pollution = 40;
+    expect(wasteBillRate(s)).toBe(2);
+    s.pollution = 500;
+    expect(wasteBillRate(s)).toBe(2);
+    expect(tileGdp(s, at(s, 0, 1))).toBe(6 - 3 * 2);
   });
   it('only released waste becomes tokens, and the bill is summed each turn', () => {
     let s = tinyGame(['oXo'], { buildings: { X: 'factory' }, config: { startingCash: 50 } });
@@ -337,19 +332,19 @@ describe('events', () => {
     s.events = [{ turn: 1, id: 'riverFlood' }];
     return s;
   }
-  it('hits unprotected tiles for max(4, 8 x GDP)', () => {
+  it('hits unprotected tiles for max(2, 4 x GDP)', () => {
     const s = floodGame(['r#']);
     s.cash = 20;
     const log = [];
     const rep = resolveEvent(s, 'riverFlood', log);
     expect(rep.hit).toHaveLength(1);
-    expect(rep.damage).toBe(4); // cottages GDP 1 - £1 waste bill = 0 -> the £4 minimum
-    expect(s.cash).toBe(16);
-    expect(s.score).toBe(-4);
+    expect(rep.damage).toBe(2); // cottages GDP 1 - £1 waste bill = 0 -> the £2 minimum
+    expect(s.cash).toBe(18);
+    expect(s.score).toBe(-2);
     expect(s.stats.eventHits).toBe(1);
-    expect(eventDamageFor(s, 0)).toBe(4);
-    expect(eventDamageFor(s, 0.3)).toBe(4);
-    expect(eventDamageFor(s, 2)).toBe(16);
+    expect(eventDamageFor(s, 0)).toBe(2);
+    expect(eventDamageFor(s, 0.3)).toBe(2);
+    expect(eventDamageFor(s, 2)).toBe(8);
   });
   it('protects tiles with WAT >= 3 and names the protector', () => {
     const s = floodGame(['ffr', 'f#r', 'ffr']);
@@ -358,8 +353,8 @@ describe('events', () => {
     expect(rep.protected).toHaveLength(1);
     expect(rep.protected[0].by.name).toBe('Fen and reedbed');
     expect(rep.messages[0]).toBe('Your fen and reedbed protected 1 tile from the river flood.');
-    expect(rep.avoided).toBe(8); // GDP 1 (the fens soak up its waste) -> 8
-    expect(s.stats.eventDamageAvoided).toBe(8);
+    expect(rep.avoided).toBe(4); // GDP 1 (the fens soak up its waste) -> 4
+    expect(s.stats.eventDamageAvoided).toBe(4);
   });
   it('threshold is exactly 3', () => {
     const s = floodGame(['r#']);

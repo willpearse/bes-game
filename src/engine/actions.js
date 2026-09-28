@@ -7,10 +7,10 @@ import { SERVICE_KEYS } from '../data/services.js';
 import { ORTHO, ortho, isBuilt, isNature, isLand, cellAt, round1 } from './grid.js';
 import { placeBuilding, recompute } from './state.js';
 import { updateMarket, discardEarlierPiles, menuUnlocked, stageForTurn, surcharge } from './market.js';
-import { updateIntensity, applyPrimaryLoss, applySuccession, intactness } from './intensity.js';
+import { updateIntensity, applyPrimaryLoss, applySuccession, intactness, updateSoil } from './intensity.js';
 import { computeSupply, computeReceived, emptyServices, topContributor } from './services.js';
 import { computeHappiness, happiness } from './happiness.js';
-import { projectGdp, counterfactualGdp, happinessMultiplier } from './gdp.js';
+import { projectGdp, counterfactualGdp, happinessMultiplier, fertiliser } from './gdp.js';
 import { resolveWaste } from './waste.js';
 import { resolveEvent } from './events.js';
 import { evaluateObjectives } from './objectives.js';
@@ -166,6 +166,7 @@ function applyChoice(state, choice, row, col, log) {
       cell.landUse = 'youngSecondary';
       cell.age = 0;
       cell.restored = true;
+      cell.soil = null;
       if (demolished) log.push({ type: 'demolish', building: demolished, row, col });
     }
     state.stats.restorations = (state.stats.restorations ?? 0) + 1;
@@ -298,6 +299,10 @@ export function takeTurn(state, action) {
   computeReceived(s);
   computeHappiness(s);
 
+  // 8b. Soil health on farms (needs this turn's water service; affects this turn's fertiliser bill).
+  const soil = updateSoil(s);
+  if (soil.length) log.push({ type: 'soil', changes: soil });
+
   // 9. GDP and counterfactuals.
   const proj = projectGdp(s);
   const mult = c.happinessMode === 'perTurn' ? happinessMultiplier(s, s.happiness) : 1;
@@ -309,7 +314,9 @@ export function takeTurn(state, action) {
   }
   s.food = proj.food;
   s.stats.foodCost = round1((s.stats.foodCost ?? 0) + proj.food.cost);
-  s.stats.wasteBill = round1((s.stats.wasteBill ?? 0) + proj.bill);
+  const fert = s.cells.reduce((t, cell) => t + (isBuilt(cell) ? fertiliser(s, cell) : 0), 0);
+  s.stats.fertiliser = round1((s.stats.fertiliser ?? 0) + fert);
+  s.stats.wasteBill = round1((s.stats.wasteBill ?? 0) + proj.bill - fert);
   s.cash = round1(Math.max(0, s.cash + proj.total));
   s.score = round1(s.score + proj.total);
   s.gdpEarned = round1(s.gdpEarned + proj.total);
@@ -329,7 +336,11 @@ export function takeTurn(state, action) {
 
   // 11. Event.
   const ev = s.events.find((e) => e.turn === s.turn);
-  if (ev) resolveEvent(s, ev.id, log);
+  if (ev) {
+    const report = resolveEvent(s, ev.id, log);
+    // Wrecked tiles change the board: refresh services, happiness and food for display.
+    if (report.destroyed.length) recompute(s);
+  }
 
   s.history.push({
     turn: s.turn, gdp: proj.total, cash: s.cash, score: s.score, happiness: s.happiness,
@@ -378,6 +389,15 @@ export function endGame(s, log) {
   const housingShortfall = Math.max(0, s.housingTarget - s.residents);
   const housingPenalty = housingShortfall * c.housingPenaltyPerResident;
   const score = round1(gdpTotal + bonus - housingPenalty);
+  // Medals: bronze = housing target met and everyone fed on the final turn; silver = also every objective met;
+  // gold = also a score of at least the map's goldScore. (Platinum, a personal best, is awarded by the UI.)
+  const checks = {
+    housing: housingShortfall === 0,
+    fed: (s.food?.bought ?? 0) === 0,
+    objectives: objectives.every((o) => o.met),
+    score: score >= s.goldScore
+  };
+  const medal = !(checks.housing && checks.fed) ? null : !checks.objectives ? 'bronze' : !checks.score ? 'silver' : 'gold';
   const natureContribution = round1(cf.actual - cf.noNature);
   const perService = Object.fromEntries(SERVICE_KEYS.map((k) => [k, round1(cf.actual - cf.without[k])]));
   s.score = score;
@@ -396,6 +416,11 @@ export function endGame(s, log) {
     housingPenalty,
     foodCost: s.stats.foodCost ?? 0,
     wasteBill: s.stats.wasteBill ?? 0,
+    fertiliser: s.stats.fertiliser ?? 0,
+    destroyed: s.stats.destroyed ?? 0,
+    medal,
+    medalChecks: checks,
+    goldScore: s.goldScore,
     pollution: s.pollution,
     natureContribution,
     natureShare: cf.actual > 0 ? natureContribution / cf.actual : 0,

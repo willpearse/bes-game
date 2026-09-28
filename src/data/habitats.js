@@ -2,8 +2,10 @@
 // services: base supply of POL (pollination), GRN (green space and clean air), WAT (clean water and flood
 // protection), multiplied by the cell's B. A land nature cell also cleans waste: its WAT supply, rounded down, in tokens a turn.
 // buildable: 'land' (land builds), 'sea' (sea builds), 'none'.
+// landUse: a fixed PREDICTS land-use class for degraded habitats (otherwise set by the map code or restoration).
 export const HABITATS = {
   peat:      { code: 'p', name: 'Peat bog',           services: { POL: 0, GRN: 2, WAT: 3 }, buildable: 'land', marine: false },
+  bare:      { code: 'b', name: 'Bare ground',        services: { POL: 0, GRN: 1, WAT: 0 }, buildable: 'land', marine: false, landUse: 'urban' },
   moorland:  { code: 'm', name: 'Upland moorland',    services: { POL: 1, GRN: 2, WAT: 1 }, buildable: 'land', marine: false },
   heath:     { code: 'h', name: 'Lowland heath',      services: { POL: 2, GRN: 2, WAT: 1 }, buildable: 'land', marine: false },
   meadow:    { code: 'g', name: 'Wildflower meadow',  services: { POL: 3, GRN: 2, WAT: 1 }, buildable: 'land', marine: false },

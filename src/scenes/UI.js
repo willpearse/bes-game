@@ -14,7 +14,7 @@ import { upcomingEvent } from '../engine/events.js';
 import { intactness } from '../engine/intensity.js';
 import { evaluateObjectives } from '../engine/objectives.js';
 import { menuUnlocked, surcharge } from '../engine/market.js';
-import { wasteTokensAt } from '../engine/waste.js';
+import { wasteTokensAt, wasteBillRate } from '../engine/waste.js';
 import { tileFood } from '../engine/gdp.js';
 import { cellAt } from '../engine/grid.js';
 import { isFirstGame, hintsSeen, markHintSeen } from '../ui/prefs.js';
@@ -103,7 +103,7 @@ export class UI extends Phaser.Scene {
     tipZone(318, 4, 150, 34, () => 'Score: total GDP earned so far, after event damage.');
     tipZone(468, 4, 100, 34, () => 'Happiness (0 to 10): the average wellbeing of residents.\nAbove 5 it boosts GDP; below 5 it drags it down.');
     tipZone(568, 4, 120, 34, () => 'Biodiversity intactness: average nature value (B) across the land.\nIt started at ' + Math.round(this.session.state.stats.startIntactness * 100) + '%.');
-    tipZone(690, 4, 170, 34, () => 'Water pollution: waste that has reached the sea or a lake.\nIt hurts fishing and holiday parks near water. Healthy seagrass cleans it slowly;\nwetlands and woods by the river stop it getting there.');
+    tipZone(690, 4, 170, 34, () => `Water pollution: waste that has reached the sea or a lake.\nIt hurts fishing and holiday parks near water, and makes clean-up dearer: waste bills are now £${wasteBillRate(this.session.state)} a token.\nHealthy seagrass cleans it slowly; wetlands and woods by the river stop it getting there.`);
     tipZone(876, 4, 400, 70, () => evaluateObjectives(this.session.state)
       .map((o) => `${o.met ? '✔ On track' : '○ Not yet'}: ${o.name}\n${o.text} (now ${o.progress})\n${OBJECTIVES[o.id].why}`).join('\n\n'));
     tipZone(596, 40, 118, 30, () => {
@@ -424,6 +424,10 @@ export class UI extends Phaser.Scene {
       lines.push(`On former ${habitatName(cell.habitat).toLowerCase()}. Waste here: ${wasteTokensAt(st, cell)}`);
       const made = b.food ? `.  Food: ${tileFood(cell)}` : '';
       lines.push(`GDP last turn: £${cell.gdp} after its waste bill${made}${cell.wellbeing != null ? `.  Wellbeing: ${fmt1(cell.wellbeing)} / 10` : ''}`);
+      if (cell.soil != null) {
+        const cost = (st.config.soilMax - cell.soil) * st.config.fertiliserPerPoint;
+        lines.push(`Soil ${cell.soil}/${st.config.soilMax}${cost ? `: fertiliser costs £${cost} a turn` : ': healthy'}. Water-holding nature touching it keeps soil healthy.`);
+      }
       lines.push(b.tip);
       this.setServices('Services received from nearby nature:', cell.received);
     } else {
@@ -431,6 +435,7 @@ export class UI extends Phaser.Scene {
       this.inspSprite.setTexture(`hab_${cell.habitat}_${cell.intensity}_n`).setVisible(true);
       lines.push(`${landUseText(cell)}. Biodiversity B ${cell.B.toFixed(2)}`);
       lines.push(`Pressure ${cell.pressure}.  Waste here: ${wasteTokensAt(st, cell)}.  Height ${cell.elevation}`);
+      if (cell.habitat === 'bare') lines.push('Bare ground: compacted and worn out. Restore it, or build on it.');
       if (cell.restored) lines.push(`Restored ${cell.age} turn${cell.age === 1 ? '' : 's'} ago.`);
       if (cell.landUse === 'primary') lines.push('Ancient habitat: if it is built on or worn out, it can never come back.');
       this.setServices('Services it supplies to tiles nearby:', cell.supply);
@@ -609,6 +614,10 @@ export class UI extends Phaser.Scene {
         const names = {};
         ev.hit.forEach((h) => { names[h.name] = (names[h.name] ?? 0) + 1; });
         lines.push('Hit: ' + Object.entries(names).map(([n, c]) => `${n}${c > 1 ? ` x${c}` : ''}`).join(', '));
+      }
+      if (ev.destroyed?.length) {
+        const n = ev.destroyed.length;
+        lines.push(`Wrecked: ${ev.destroyed.map((d) => d.name).join(', ')}. ${n === 1 ? 'It is' : 'They are'} bare ground now: rebuild, or put nature there instead.`);
       }
       lines.push('');
       lines.push(`${ev.protected.length} tile${ev.protected.length === 1 ? ' was' : 's were'} protected by nature.`);

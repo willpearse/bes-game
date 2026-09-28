@@ -19,5 +19,6 @@
   "startingBuildingHabitat": "meadow",
   "startingCash": 10,
   "housingTarget": 16,
+  "goldScore": 660,
   "elevation": "valleyFormula"
 }

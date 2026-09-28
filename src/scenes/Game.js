@@ -374,7 +374,19 @@ export class Game extends Phaser.Scene {
       this.animLayer.add(t);
       this.tweens.add({ targets: t, y: c.y - 30, alpha: 0, duration: 1400, delay: 300, onComplete: () => t.destroy() });
     }
+    // Wrecked tiles: a cloud of dust and a label, over the bare ground they have become.
+    for (const d of ev.destroyed ?? []) {
+      const c = cellCentre(d.row, d.col);
+      const dust = this.add.circle(c.x, c.y, 6, 0x8a6142, 0.9);
+      this.animLayer.add(dust);
+      this.tweens.add({ targets: dust, radius: 30, alpha: 0, duration: 900, delay: 900, ease: 'Cubic.easeOut', onComplete: () => dust.destroy() });
+      const t = text(this, c.x, c.y + 12, 'Wrecked!', { size: 13, bold: true, color: '#ffd9a0', origin: [0.5, 0.5] });
+      t.setStroke('#000000', 3).setAlpha(0);
+      this.animLayer.add(t);
+      this.tweens.add({ targets: t, alpha: 1, y: c.y - 6, duration: 300, delay: 1000 });
+      this.tweens.add({ targets: t, alpha: 0, duration: 500, delay: 2300, onComplete: () => t.destroy() });
+    }
     this.tweens.add({ targets: g, alpha: 0, duration: 400, delay: 1500, onComplete: () => g.destroy() });
-    return 1900;
+    return ev.destroyed?.length ? 2900 : 1900;
   }
 }

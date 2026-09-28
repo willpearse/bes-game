@@ -11,8 +11,8 @@ import { CONFIG } from '../src/data/config.js';
 import { EVENTS } from '../src/data/events.js';
 import { MAPS } from '../src/data/maps/index.js';
 import { ortho, idx, isBuilt, isNature } from '../src/engine/grid.js';
-import { wasteRelease } from '../src/engine/waste.js';
-import { tileFood } from '../src/engine/gdp.js';
+import { wasteRelease, wasteBillRate } from '../src/engine/waste.js';
+import { tileFood, fertiliser } from '../src/engine/gdp.js';
 import { BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.js';
 
 const args = parseArgs(process.argv.slice(2));
@@ -36,7 +36,7 @@ const map = MAPS[cfg.mapId];
 const startHabitats = map.rows.join('').split('')
   .map((ch) => Object.keys(HABITATS).find((k) => HABITATS[k].code === ch.toLowerCase()))
   .filter(Boolean);
-// Sea tiles (harbour, fleet, wind farm) use the average marine square instead.
+// Sea tiles (fleet, wind farm) use the average marine square instead.
 const B_LIGHT = PREDICTS_B.matureSecondary.light;
 const average = (habitats) => Object.fromEntries(SERVICE_KEYS.map((s) => [s, mean(habitats.map((h) => HABITATS[h].services[s])) * B_LIGHT]));
 const perSquare = {
@@ -104,7 +104,8 @@ function collect(bot) {
           live.set(pos, t);
           tiles.set(`${g}:${pos}:${state.turn}`, t);
         }
-        const bill = release.get(idx(state, cell.row, cell.col)).released * cfg.wasteBillPerToken;
+        // Approximate: the bill rate uses pollution after this turn's waste step.
+        const bill = release.get(idx(state, cell.row, cell.col)).released * wasteBillRate(state) + fertiliser(state, cell);
         const net = earn.get(pos) ?? 0;
         const food = tileFood(cell);
         t.turns += 1;
@@ -137,7 +138,7 @@ console.log(`# Building pay-off: ${games} games per bot, seeds ${firstSeed} to $
 console.log(`\nVariant: ${JSON.stringify(config)}. "Touching nature" (k) counts the 4 squares N, E, S, W that are nature (including river and sea).`);
 console.log(`\nTheory assumes each touching nature square supplies the map's average habitat at light use (B ${B_LIGHT}). ` +
   `Land: ${SERVICE_KEYS.map((s) => `${s} ${f2(perSquare.land[s])}`).join(', ')}. ` +
-  `Sea (for harbour, fleet and wind farm): ${SERVICE_KEYS.map((s) => `${s} ${f2(perSquare.sea[s])}`).join(', ')}. ` +
+  `Sea (for fleet and wind farm): ${SERVICE_KEYS.map((s) => `${s} ${f2(perSquare.sea[s])}`).join(', ')}. ` +
   `Received is capped at ${cfg.serviceCap}. Theory ignores waste tokens and pollution, and gives a business park its full bonus for homes. ` +
   `Net = income x happiness multiplier - waste bill (1 per waste token that touching nature cannot soak up). ` +
   `Food is shown separately: each unit saves £${cfg.foodImportPrice} of food the town would otherwise buy, and each resident eats ${cfg.foodPerResident}.`);
@@ -150,7 +151,7 @@ for (const bot of bots) {
 }
 
 console.log('\n## Bots\n');
-console.log('| Bot | Rule | Mean H | Tile-turns | Waste bills as % of income | Food bought as % of income | Event damage as % of income | Tiles at risk hit |');
+console.log('| Bot | Rule | Mean H | Tile-turns | Waste bills and fertiliser as % of income | Food bought as % of income | Event damage as % of income | Tiles at risk hit |');
 console.log('|---|---|---|---|---|---|---|---|');
 for (const bot of bots) {
   const d = all[bot];

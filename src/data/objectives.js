@@ -57,6 +57,16 @@ export const OBJECTIVES = {
     name: 'Nature pays', text: "Half your GDP comes from nature's services", kind: 'natureShareMin', value: 0.5,
     why: "Much of the economy quietly depends on nature's services."
   },
+  forestSchool: {
+    name: 'Forest school', text: 'A school with at least 2 nature squares touching it', kind: 'buildingTouchingNature',
+    building: 'school', min: 2,
+    why: 'Children who learn outdoors are healthier and pay more attention.'
+  },
+  healthyTown: {
+    name: 'Healthy town', text: 'Every home within 4 squares of a hospital', kind: 'homesNearBuilding',
+    building: 'hospital', radius: 4,
+    why: 'Good healthcare close to home keeps a community going.'
+  },
   coastGuard: {
     name: 'Coast guard', text: 'At least 2 coastal tiles, all with water and flood protection 3+', kind: 'coastGuard',
     radius: 2, service: 'WAT', min: 3, atLeast: 2,

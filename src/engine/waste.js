@@ -2,7 +2,7 @@
 import { CONFIG } from '../data/config.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { cellAt, idx, ortho, isBuilt, isNature, isMarine, building, round1 } from './grid.js';
+import { cellAt, idx, ortho, isBuilt, isNature, isMarine, round1 } from './grid.js';
 import { cellB } from './intensity.js';
 
 const cfg = (state) => state.config ?? CONFIG;
@@ -55,10 +55,8 @@ function isSink(cell) {
 const defaultRecv = (cell) => cell.received;
 
 // What happens to each built tile's waste this turn. Nature touching the tile soaks up
-// floor(WAT received / wasteAbsorbDivisor); then touching recycling centres (in row order, N, E, S, W)
-// soak up to their capacity. The rest is released: it is billed and becomes tokens that flow downhill.
-// Returns a Map from cell index to { made, absorbed, recycled, released }, plus spare recycling
-// capacity per recycling centre under the key `spare` (a Map from cell index to capacity left).
+// floor(WAT received / wasteAbsorbDivisor); the rest is released: it is billed and becomes tokens that flow downhill.
+// Returns a Map from cell index to { made, absorbed, released }.
 export function wasteRelease(state, recv = defaultRecv) {
   const c = cfg(state);
   const out = new Map();
@@ -66,31 +64,21 @@ export function wasteRelease(state, recv = defaultRecv) {
     if (!isBuilt(cell)) continue;
     const made = BUILDINGS[cell.building].waste;
     const absorbed = Math.min(made, Math.floor((recv(cell)?.WAT ?? 0) / c.wasteAbsorbDivisor));
-    out.set(idx(state, cell.row, cell.col), { made, absorbed, recycled: 0, released: made - absorbed });
+    out.set(idx(state, cell.row, cell.col), { made, absorbed, released: made - absorbed });
   }
-  const spare = new Map();
-  for (const cell of state.cells) {
-    const b = building(cell);
-    if (!b || !b.recycles) continue;
-    let left = b.recycles;
-    for (const n of ortho(state, cell.row, cell.col)) {
-      const r = out.get(idx(state, n.row, n.col));
-      if (!r || left <= 0) continue;
-      const take = Math.min(left, r.released);
-      r.recycled += take;
-      r.released -= take;
-      left -= take;
-    }
-    spare.set(idx(state, cell.row, cell.col), left);
-  }
-  out.spare = spare;
   return out;
+}
+
+// The waste bill per released token: dearer as water pollution becomes chronic, up to a cap.
+export function wasteBillRate(state) {
+  const c = cfg(state);
+  return Math.min(c.wasteBillMax, c.wasteBillPerToken + Math.floor(state.pollution / c.wasteBillPollutionStep));
 }
 
 // Step 10 in token mode. Mutates state, pushes to log.
 export function resolveWasteTokens(state, log) {
   const c = cfg(state);
-  const record = { produced: 0, absorbed: 0, cleaned: 0, recycled: 0, released: 0, moves: [], toSea: 0, toLake: 0 };
+  const record = { produced: 0, absorbed: 0, cleaned: 0, released: 0, moves: [], toSea: 0, toLake: 0 };
 
   // 1. Produce: only released waste becomes tokens (the rest was soaked up at source).
   const release = wasteRelease(state);
@@ -98,12 +86,11 @@ export function resolveWasteTokens(state, log) {
     state.cells[i].waste += r.released;
     record.produced += r.made;
     record.absorbed += r.absorbed;
-    record.recycled += r.recycled;
     record.released += r.released;
   }
 
   // 2. Clean: each nature land cell cleans its own cell, then river cells N, E, S, W of it,
-  // up to its capacity. Then recycling centres use any spare capacity on their own and touching squares.
+  // up to its capacity.
   for (const cell of state.cells) {
     let left = cleanCapacity(cell);
     for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
@@ -113,19 +100,6 @@ export function resolveWasteTokens(state, log) {
       record.cleaned += r;
     }
   }
-  for (const cell of state.cells) {
-    const b = building(cell);
-    if (b && b.recycles) {
-      let left = release.spare.get(idx(state, cell.row, cell.col)) ?? 0;
-      for (const t of [cell, ...ortho(state, cell.row, cell.col)]) {
-        if (left <= 0) break;
-        const r = removeFrom(t, left);
-        left -= r;
-        record.recycled += r;
-      }
-    }
-  }
-
   // 3-4. Move simultaneously, with river tokens continuing up to riverMaxSteps. Sinks absorb.
   for (let step = 1; step <= c.riverMaxSteps; step++) {
     const delta = new Array(state.cells.length).fill(0);
@@ -171,7 +145,7 @@ export function resolveWasteSimple(state, log) {
   for (const cell of state.cells) capacity += cleanCapacity(cell);
   const toSea = Math.max(0, released - capacity);
   state.pollution += toSea;
-  const record = { produced, absorbed: produced - released, cleaned: Math.min(released, capacity), recycled: 0, released, moves: [], toSea, toLake: 0 };
+  const record = { produced, absorbed: produced - released, cleaned: Math.min(released, capacity), released, moves: [], toSea, toLake: 0 };
   seaRecovery(state, record);
   log.push({ type: 'waste', ...record });
   return record;

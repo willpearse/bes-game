@@ -13,14 +13,12 @@ export const STAGE_PILES = {
   hospital:     { A: 0, B: 1, C: 1 },
   businessPark: { A: 1, B: 1, C: 2 },
   factory:      { A: 0, B: 1, C: 2 },
-  recycling:    { A: 1, B: 1, C: 1 },
-  harbour:      { A: 0, B: 1, C: 1 },
   fishingFleet: { A: 2, B: 1, C: 0 },
   windFarm:     { A: 0, B: 0, C: 3 }
 };
 
 export const MENU_UNLOCKS = {
-  A: ['cottages', 'familyFarm', 'hillFarm', 'conifer', 'school', 'holidayPark', 'businessPark', 'recycling', 'fishingFleet'],
-  B: ['towerBlock', 'cluckTowers', 'hospital', 'factory', 'harbour'],
+  A: ['cottages', 'familyFarm', 'hillFarm', 'conifer', 'school', 'holidayPark', 'businessPark', 'fishingFleet'],
+  B: ['towerBlock', 'cluckTowers', 'hospital', 'factory'],
   C: ['windFarm']
 };

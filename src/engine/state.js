@@ -38,6 +38,7 @@ function makeCell(row, col, habitat, landUse) {
     restored: false,
     reserve: false,
     reserveAge: null,
+    soil: null,           // soil health 0..soilMax on farms that have it, else null
     pressure: 0,
     B: 0,
     supply: null,
@@ -56,6 +57,7 @@ export function placeBuilding(cell, buildingId) {
   cell.age = 0;
   cell.restored = false;
   cell.reserveAge = null;
+  cell.soil = b.soil ? CONFIG.soilMax : null;
 }
 
 export function parseMap(map) {
@@ -74,7 +76,8 @@ export function parseMap(map) {
       } else {
         const habitat = CODE_TO_HABITAT[ch.toLowerCase()];
         if (!habitat) throw new Error(`Unknown map code '${ch}' at ${row},${col}`);
-        cell = makeCell(row, col, habitat, ch === ch.toUpperCase() ? 'primary' : 'matureSecondary');
+        const landUse = HABITATS[habitat].landUse ?? (ch === ch.toUpperCase() ? 'primary' : 'matureSecondary');
+        cell = makeCell(row, col, habitat, landUse);
       }
       if (map.elevation === 'valleyFormula') cell.elevation = valleyElevation(row, col, cell.habitat, map.height);
       else cell.elevation = map.elevation[row][col];
@@ -131,6 +134,7 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     // Explicit config beats the map, which beats the CONFIG default.
     cash: config?.startingCash ?? map.startingCash ?? MAP_DEFAULTS.startingCash,
     housingTarget: config?.housingTarget ?? map.housingTarget ?? MAP_DEFAULTS.housingTarget,
+    goldScore: config?.goldScore ?? map.goldScore ?? MAP_DEFAULTS.goldScore,
     food: null,           // { made, need, bought, cost } this turn
     score: 0,
     gdpEarned: 0,
@@ -146,7 +150,7 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     objectives: [],
     startPrimary: [],
     stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0, restorations: 0,
-      foodCost: 0, wasteBill: 0 },
+      foodCost: 0, wasteBill: 0, fertiliser: 0, destroyed: 0 },
     startHabitats: {},
     objectiveOffer: [],
     // Running GDP totals: actual, with no nature, and without each service. income holds the income-only
