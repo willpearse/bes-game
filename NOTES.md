@@ -139,4 +139,31 @@ What stands out, compared with the five-service version:
 - **Nature's share of GDP** is about 55% (random) to 67% (greedy), mostly green space through happiness, then pollination through farms.
 - Water pollution is still high by the end of greedy games (see the waste item in `TODO.md`).
 
+### Four bots and building pay-off (after 36 to 43)
+
+44. **Bots** (`scripts/bots.js`; each is one rule):
+    - *random*: pass, build or restore at random.
+    - *greedy*: the build or restoration with the best gain in this turn's GDP per pound; passes if nothing gains.
+    - *nature*: never builds; every turn makes the restoration that would add most GDP once the habitat has grown, then most happiness, then most biodiversity. It uses `preview(..., { grown: true })`, which scores a restoration as mature habitat (and an open-sea reserve as seagrass), and `intactnessDelta`, both added to `preview()` for this.
+    - *balanced*: builds like greedy, but only off ancient habitat and where the new tile keeps at least two nature squares touching it; otherwise restores like the nature bot.
+
+`npm run simulate -- --games 500 --bot all`:
+
+| Bot | Score | GDP after damage | Nature's share | Event hits | Ancient lost | Intactness at end | Objectives met |
+|---|---|---|---|---|---|---|---|
+| random | £206 | £174 | 55% | 4.5 | 0.8 | 80% | 0.6 |
+| greedy | £608 | £593 | 67% | 9.7 | 6.0 | 67% | 0.3 |
+| nature | £106 | £70 | 39% | 0.3 | 0 | 87% | 0.7 |
+| balanced | £615 | £601 | 66% | 11.1 | 5.5 | 65% | 0.3 |
+
+`npm run payoff -- --games 300` (full tables in `reports/payoff-2026-09-28.md`) records every building's net GDP each turn (income × happiness multiplier − upkeep) against the number of nature squares touching it (k), and compares it with what the parameters predict (each touching square supplies the map's average habitat at light use). Findings:
+
+- **Nature on its own earns almost nothing.** The nature bot keeps the two starting cottages and plants woodland around them (happiness 9.7), but with no other buildings nothing uses the services. Restoring mature habitat also *lowers* intactness during a game (89% to 87%), because young habitat has a lower B than what it replaces.
+- **The balanced bot is greedy in disguise.** It never restores (a well-spaced build that gains GDP is always available) and scores the same as greedy, losing slightly fewer ancient cells. The two-neighbour rule rarely binds.
+- **Only three buildings depend on nature for income, and the data match the theory for them.** Family farm: about £0 a turn with k ≤ 1, £3.1 with k = 3, £3.8 with k = 4 (above theory, because bots put farms next to meadow, POL 3, not the average square). Homes: wellbeing rises with k as predicted (cottages 4.4 at k = 1 to 9.4 at k = 4), about 0.5 to 1 below theory because of nuisance and waste. Holiday park and fishing fleet: well below theory, because water pollution (about 200 by the end of greedy games) wipes out their income; the fleet never pays back.
+- **The best buildings ignore nature.** Business parks (pay-off £39.5 a tile, paid back in under a turn) and factories (£24, one turn) earn the same whatever touches them. Their upkeep (1 and 2) is small against income of 5 to 6.
+- **Upkeep takes 26 to 30% of income, but rarely changes a decision.** Every building except the holiday park, school, hospital, recycling centre and fleet pays back its cost in about 2 turns or less.
+- **Hazards take about 7% of income.** About 55% of tiles at risk are hit, because protection needs 3 WAT from four touching squares and the average land square supplies 1.2. Observed damage per tile-turn is close to the parameter theory: an exposed, unprotected tile expects to lose 0.75 × 4 × its GDP over a game, about 3 turns of income out of 24. So protecting a factory is worth about £12 a game, while a restoration turn gives up a build worth £20 to £40; the bots are right to ignore protection.
+- Caution: k is confounded with timing. Tiles with few nature neighbours are mostly built late, when happiness is lower, so some differences for nature-independent buildings (such as Cluck Towers) reflect when they were built, not what touches them.
+
 Open questions and future work are in `TODO.md`.

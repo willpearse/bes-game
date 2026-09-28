@@ -167,6 +167,22 @@ describe('preview', () => {
     expect(pr.warnings[0]).toMatch(/ancient habitat/);
     expect(pr.received).toBeNull();
   });
+  it('can preview a restoration as it will be once grown', () => {
+    const s = tinyGame(['#g', 'oo']);
+    const act = { type: 'restore', restoration: 'plantWoodland' };
+    const now = preview(s, act, 0, 1);
+    const later = preview(s, act, 0, 1, { grown: true });
+    expect(now.intactnessDelta).toBeLessThan(0); // young woodland has a lower B than mature meadow
+    expect(later.intactnessDelta).toBeCloseTo(0, 5); // mature woodland: back to the same B
+    expect(later.gdpDelta).toBeGreaterThan(now.gdpDelta);
+    const reserve = preview(s, { type: 'restore', restoration: 'marineReserve' }, 1, 1, { grown: true });
+    expect(reserve.intactnessDelta).toBe(0); // sea is not counted in intactness
+    expect(reserve.gdpDelta).toBeGreaterThanOrEqual(0);
+    const seagrass = tinyGame(['#z']);
+    expect(preview(seagrass, { type: 'restore', restoration: 'marineReserve' }, 0, 1, { grown: true }).gdpDelta).toBe(0);
+    expect(preview(s, { type: 'build', building: 'cottages' }, 0, 1, { grown: true }).gdpDelta)
+      .toBe(preview(s, { type: 'build', building: 'cottages' }, 0, 1).gdpDelta); // builds are unaffected
+  });
   it('warns when nearby ancient habitat would be lost', () => {
     const s = tinyGame(['#GG'], { config: { startingCash: 50 } });
     at(s, 0, 2).waste = 1;

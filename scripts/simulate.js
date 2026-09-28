@@ -1,90 +1,17 @@
 #!/usr/bin/env node
 // Headless balance simulation.
 //   npm run simulate -- --games 500 --bot greedy
-// Options: --games N (default 100), --bot random|greedy|both (default both), --seed S (first seed, default 1),
+// Options: --games N (default 100), --bot random|greedy|nature|balanced|both|all or a comma list
+//          (default both = random and greedy), --seed S (first seed, default 1),
 //          --market menu, --waste simple, --happiness endGame, --pressure 1 (same variant flags as the URL).
-import { createGame } from '../src/engine/state.js';
-import { takeTurn, legalTargets, preview, choiceCost } from '../src/engine/actions.js';
-import { menuUnlocked } from '../src/engine/market.js';
-import { mulberry32 } from '../src/engine/rng.js';
-import { RESTORATION_KEYS } from '../src/data/restorations.js';
 import { SERVICE_KEYS } from '../src/data/services.js';
-
-function parseArgs(argv) {
-  const out = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith('--')) {
-      const key = argv[i].slice(2);
-      const next = argv[i + 1];
-      if (next === undefined || next.startsWith('--')) out[key] = true;
-      else { out[key] = next; i++; }
-    }
-  }
-  return out;
-}
+import { BOTS, BOT_RULES, playGame, parseArgs, variantConfig, botList } from './bots.js';
 
 const args = parseArgs(process.argv.slice(2));
 const games = Number(args.games ?? 100);
-const bots = args.bot && args.bot !== 'both' ? [args.bot] : ['random', 'greedy'];
+const bots = botList(args.bot, ['random', 'greedy']);
 const firstSeed = Number(args.seed ?? 1);
-const config = {};
-if (args.market) config.marketMode = args.market === 'menu' ? 'menu' : 'market';
-if (args.waste) config.wasteMode = args.waste === 'simple' ? 'simple' : 'tokens';
-if (args.happiness) config.happinessMode = args.happiness === 'endGame' ? 'endGame' : 'perTurn';
-if (args.pressure) config.populationPressure = ['1', 'true', 'on'].includes(String(args.pressure));
-
-// All choices (without a target) available this turn.
-function choices(state) {
-  const out = [];
-  if (state.config.marketMode === 'market') {
-    state.market.slots.forEach((t, slot) => { if (t) out.push({ type: 'build', slot }); });
-    const restoreSlot = state.market.slots.findIndex((t) => t != null);
-    if (restoreSlot >= 0) for (const r of RESTORATION_KEYS) out.push({ type: 'restore', restoration: r, slot: restoreSlot });
-  } else {
-    for (const b of menuUnlocked(state)) out.push({ type: 'build', building: b });
-    for (const r of RESTORATION_KEYS) out.push({ type: 'restore', restoration: r });
-  }
-  return out;
-}
-
-function actionsFor(state) {
-  const acts = { build: [], restore: [] };
-  for (const ch of choices(state)) {
-    for (const t of legalTargets(state, ch)) acts[ch.type].push({ ...ch, row: t.row, col: t.col });
-  }
-  return acts;
-}
-
-const BOTS = {
-  random(state, rng) {
-    const acts = actionsFor(state);
-    const types = ['pass', ...(acts.build.length ? ['build'] : []), ...(acts.restore.length ? ['restore'] : [])];
-    const type = types[Math.floor(rng() * types.length)];
-    if (type === 'pass') return { type: 'pass' };
-    const list = acts[type];
-    return list[Math.floor(rng() * list.length)];
-  },
-  // Picks the action with the best previewed GDP gain per pound; passes if nothing gains.
-  greedy(state) {
-    const acts = actionsFor(state);
-    let best = { type: 'pass' };
-    let bestValue = 0;
-    for (const a of [...acts.build, ...acts.restore]) {
-      const p = preview(state, a, a.row, a.col);
-      const value = p.gdpDelta / Math.max(1, choiceCost(state, a));
-      if (value > bestValue + 1e-9) { bestValue = value; best = a; }
-    }
-    return best;
-  }
-};
-
-function playGame(bot, seed) {
-  let state = createGame({ seed, config });
-  let r = seed;
-  const rng = () => { const [v, n] = mulberry32(r); r = n; return v; };
-  while (!state.gameOver) state = takeTurn(state, BOTS[bot](state, rng)).state;
-  return state.final;
-}
+const config = variantConfig(args);
 
 const stats = (xs) => {
   const n = xs.length;
@@ -107,11 +34,11 @@ for (const bot of bots) {
   const t0 = Date.now();
   const results = [];
   for (let i = 0; i < games; i++) {
-    results.push(playGame(bot, firstSeed + i));
+    results.push(playGame(bot, firstSeed + i, config));
     if (process.stdout.isTTY && (i + 1) % 10 === 0) process.stdout.write(`\r  ${bot}: ${i + 1}/${games}`);
   }
   if (process.stdout.isTTY) process.stdout.write('\r' + ' '.repeat(40) + '\r');
-  console.log(`\n${bot} bot (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
+  console.log(`\n${bot} bot (${((Date.now() - t0) / 1000).toFixed(1)} s): ${BOT_RULES[bot]}`);
   console.log(row('Score (£)', results.map((f) => f.score)));
   console.log(row('GDP after damage (£)', results.map((f) => f.gdpAfterDamage)));
   console.log(row("Nature's share of GDP", results.map((f) => f.natureShare * 100), 1, '%'));

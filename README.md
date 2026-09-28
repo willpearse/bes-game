@@ -10,7 +10,8 @@ npm run dev        # http://localhost:8080
 npm test           # engine tests (Vitest)
 npm run coverage   # engine line coverage
 npm run build      # static build in dist/
-npm run simulate -- --games 500 --bot greedy
+npm run simulate -- --games 500 --bot all   # random, greedy, nature, balanced
+npm run payoff -- --games 300               # building pay-off with and without nature, vs theory
 ```
 
 ## Variants
@@ -43,7 +44,9 @@ The title screen offers the tile mode (market or menu), when happiness counts, t
 - `src/data/`: every tunable number and table (flat, data-only files).
 - `src/art/`: the palette and 32×32 sprites as palette-index strings (drawn by `scripts/draw-sprites.js`).
 - `src/scenes/`: Phaser scenes (Boot, Title, Game, UI, End).
-- `scripts/simulate.js`: headless balance simulation with a random and a greedy bot.
+- `scripts/bots.js`: the simulation bots (random, greedy, nature, balanced), each a one-sentence rule.
+- `scripts/simulate.js`: headless balance simulation.
+- `scripts/payoff.js`: how much each kind of building earns with and without nature touching it, against what the parameters predict.
 
 ## Deploying to GitHub Pages
 

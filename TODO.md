@@ -14,6 +14,9 @@ Ideas and open questions for later sessions. Newest designer requests first.
 
 - Upkeep values, the service cap (6) and the four-square reach were first guesses after the simplification (NOTES 36 to 42). They need tuning against the simulator and real play.
 - The greedy bot still scores well above the random bot and loses several ancient cells a game. It only looks one turn ahead, so it never values restoration; a bot that plans ahead would test whether restoring now pays back.
+- Hazards and upkeep look too weak to change decisions (NOTES 44): events cost about 7% of income and an unprotected tile expects to lose about 3 turns of its GDP a game; upkeep rarely stops a build paying back within 2 turns. Options to test with `npm run payoff`: a larger damage multiplier or damage that lasts (a tile out of action for some turns), events every stage, upkeep that grows with neighbouring pressure or waste, higher upkeep on the nature-independent big earners (factory, business park).
+- The balanced bot never restores, because a well-spaced build that gains GDP is always available. A restoration only pays if it beats a new build within the turns left.
+- Restoring mature habitat lowers intactness until it matures (young B 0.6), which works against Biodiversity net gain and Thriving wildlife. Decide whether that is the intended lesson.
 - Check each objective with the simulator: how often each is met by each bot, and whether any is trivially met or near impossible on the estuary map.
 
 ## Open questions (moved from NOTES.md)

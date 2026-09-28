@@ -203,10 +203,22 @@ function baseline(state) {
   return b;
 }
 
-export function preview(state, choice, row, col) {
+// Restored habitat as it will be once grown: mature secondary, and seagrass on an open-sea reserve.
+function grow(cell, choice) {
+  if (choice.type !== 'restore') return;
+  if (RESTORATIONS[choice.restoration].reserve) {
+    if (cell.habitat === 'openSea') Object.assign(cell, { habitat: 'seagrass', reserveAge: null, restored: true });
+    else return;
+  }
+  cell.landUse = 'matureSecondary';
+}
+
+// Options: { grown: true } previews a restoration as it will be once the habitat has grown.
+export function preview(state, choice, row, col, { grown = false } = {}) {
   const { before, base } = baseline(state);
   const after = clone(state);
   applyChoice(after, choice, row, col, []);
+  if (grown) grow(cellAt(after, row, col), choice);
   const proj = recompute(after).projection;
   const cell = cellAt(after, row, col);
 
@@ -238,6 +250,7 @@ export function preview(state, choice, row, col) {
     received: isBuilt(cell) ? { ...cell.received } : null,
     intensityChanges,
     happinessDelta: round1(after.happiness - before.happiness),
+    intactnessDelta: intactness(after) - intactness(before),
     gdpDelta: round1(proj.total - base.total),
     turnGdp: proj.total,
     cost: choiceCost(state, choice),

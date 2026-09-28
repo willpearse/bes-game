@@ -26,7 +26,8 @@ npm run dev          # Vite dev server, http://localhost:8080
 npm test             # Vitest engine tests (tests/*.test.js)
 npm run coverage     # engine line coverage (target > 90%)
 npm run build        # static build into dist/ (relative base, works on GitHub Pages)
-npm run simulate -- --games 500 --bot greedy   # headless balance run (random | greedy | both)
+npm run simulate -- --games 500 --bot all      # headless balance run (random | greedy | nature | balanced | both | all)
+npm run payoff -- --games 300                  # building pay-off by touching nature, observed vs theory
 node scripts/draw-sprites.js                   # regenerate src/art/sprites.js
 ```
 
@@ -72,7 +73,8 @@ src/
   ui/                  layout.js (positions, RES, camera helpers), widgets.js (text, button, panel),
                        prefs.js (URL flags, localStorage: scores, hints, settings), describe.js
 tests/                 Vitest; helpers.js has tinyGame() for small hand-made maps
-scripts/               simulate.js (bots), draw-sprites.js (art generator)
+scripts/               bots.js, simulate.js, payoff.js (balance tools), draw-sprites.js (art generator)
+reports/               saved balance reports (generated; regenerate rather than edit)
 public/                favicon, web app manifest, home-screen icons
 ```
 
