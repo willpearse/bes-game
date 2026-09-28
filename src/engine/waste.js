@@ -91,15 +91,18 @@ export function resolveWasteTokens(state, log) {
 
   // 2. Clean: each nature land cell cleans its own cell, then river cells N, E, S, W of it,
   // up to its capacity.
-  for (const cell of state.cells) {
-    let left = cleanCapacity(cell);
-    for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
-      if (left <= 0) break;
-      const r = removeFrom(t, left);
-      left -= r;
-      record.cleaned += r;
-    }
-  }
+  const capLeft = state.cells.map((cell) => cleanCapacity(cell));
+  const cleanPass = () => {
+    state.cells.forEach((cell, i) => {
+      for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
+        if (capLeft[i] <= 0) break;
+        const r = removeFrom(t, capLeft[i]);
+        capLeft[i] -= r;
+        record.cleaned += r;
+      }
+    });
+  };
+  cleanPass();
   // 3-4. Move simultaneously, with river tokens continuing up to riverMaxSteps. Sinks absorb.
   for (let step = 1; step <= c.riverMaxSteps; step++) {
     const delta = new Array(state.cells.length).fill(0);
@@ -126,6 +129,7 @@ export function resolveWasteTokens(state, log) {
         cell.waste = 0;
       }
     }
+    if (c.cleanWhileFlowing) cleanPass();
   }
 
   seaRecovery(state, record);

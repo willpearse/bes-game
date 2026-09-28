@@ -19,6 +19,8 @@ export const CONFIG = {
   objectives: null,           // chosen objective ids; null = the first objectiveCount of the offer
   eventCount: 3,
   riverMaxSteps: 3,
+  // Experimental (0 = off): riverbank nature also cleans waste as it flows past, using capacity left over this turn.
+  cleanWhileFlowing: 0,
   pollutionPressureThreshold: 10,  // water pollution at which every sea and lake cell gains 1 pressure
   pollutionRecoveryPerSeagrass: 0.5,
   pollutionDecay: 0.1,        // share of water pollution that disperses each turn (after seagrass)

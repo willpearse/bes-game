@@ -75,6 +75,19 @@ describe('waste movement', () => {
     expect(at(s2, 0, 0).waste).toBe(0); // own cell first
     expect(at(s2, 0, 1).waste).toBe(4);
   });
+  it('with cleanWhileFlowing, riverbank nature also cleans waste flowing past, within its capacity', () => {
+    const rows = ['mr', 'fr', 'mr', 'mr', 'oo'];
+    const elevation = [[20, 9], [20, 8], [20, 7], [20, 6], [0, 0]];
+    const off = tinyGame(rows, { elevation });
+    at(off, 0, 1).waste = 3; // stopped above the fen: nothing cleans it on the way past
+    const recOff = resolveWasteTokens(off, []);
+    expect(recOff.cleaned).toBe(0);
+    const on = tinyGame(rows, { elevation, config: { cleanWhileFlowing: 1 } });
+    at(on, 0, 1).waste = 3;
+    const recOn = resolveWasteTokens(on, []);
+    expect(recOn.cleaned).toBe(2); // the fen's full capacity, used once
+    expect(on.cells.reduce((a, c) => a + c.waste, 0)).toBe(1);
+  });
   it('clean capacity is the water supply rounded down, so it falls with B', () => {
     const s = tinyGame(['f'], { elevation: [[5]] });
     expect(cleanCapacity(at(s, 0, 0))).toBe(2); // 3 * 0.9 = 2.7
