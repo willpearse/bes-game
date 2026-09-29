@@ -253,4 +253,45 @@ What stands out, compared with the five-service version:
 - **Tools:** `simulate` now prints actions per game (builds, restores, restores in the first half, passes), and `--trace` prints one game turn by turn (action, square, food, residents, pollution, turn GDP, cash, events).
 - **Food runs out in stage C for every bot.** The stage C market pile has no family farms, hill farms or fishing fleets and only one Cluck Towers, while tower blocks keep coming. That, not bot behaviour, is the main reason "fed on the last turn" (and so bronze) fails so often. See TODO.
 
+### Cleaner rivers, beavers, sewage works and two levels (designer's changes)
+
+62. **Waste is cleaned as it flows past.** Before, each nature square cleaned only at the start of the waste step, before tokens moved, so waste entering the river could travel up to 3 squares straight past a riverbank fen that turn. A test switch (60 games per bot, per map) showed the timing mattered on the estuary (end-of-game water pollution roughly halved: balanced 26 → 16, repair 25 → 14) but hardly at all on the old Mill valley (balanced 124 → 120), where far more waste was made than the banks could clean. Scores and medals barely changed, because the waste bill is paid where the waste is made. The designer made it the rule: each square now keeps its cleaning for the turn and uses it again after every move step.
+63. **More cleaning and soaking up.** Clean capacity is WAT supply × B plus `cleanRounding` (0.5), rounded down: that is, rounded to the nearest token (was rounded down). Meadow, heath and moorland now clean 1 a turn, woodland and dunes 2, wetlands 3 (at B 0.9). Nature touching a building soaks up 1 waste per 1.5 water service it receives (`wasteAbsorbDivisor`, was 2).
+64. **Welcome beavers** (restoration `beaverDam`, on a river square). The designer asked for a reedbed restoration in the river; the Fen habitat is already "Fen and reedbed", so the designer asked for another natural in-river restoration, and beavers were chosen (they are being released in Britain now, and their dams slow water and trap pollution). The square stays a river but gets `dam: true`: it adds GRN +1 and WAT +2 (scaled by B), holds any waste that reaches it until the next turn (dammed squares do not pass waste on in move steps 2 and 3), and cleans up to 3 tokens a turn (× B, rounded) on itself and the river squares touching it. It does not change the land use, so it never costs ancient habitat. Only on a river square without a dam or a building.
+65. **Sewage works** (tile `sewageWorks`, on a river square without a dam). Costs £8 and £2 a turn (`upkeep`, a new building field, added to the tile's costs like fertiliser and reported as running costs); no income and no services. Waste reaching it goes into its `tank` (a new cell field); after the waste moves it treats up to `sewageTreatPerTurn` (6). **Storm overflows:** in a river flood (`overflowsSewage` on the event), or in any turn when more than `sewageResidentsMax` (16) residents drain through it, the whole tank is released onto the next square downstream (straight into pollution if that is the sea or a lake). "Drain through it" means homes whose downhill path, following the waste flow, reaches the works. It does not let the town grow beside it (`notBuiltNeighbour`) but does not stop the free river crossing (NOTES 6a). A wrecked works goes back to river, not bare ground. It is in the market piles (stage A 1, B 1) and in the stage A menu. Simple waste mode ignores dams and works.
+66. **Student and Teacher levels** (`CONFIG.difficulty`, default Student). A map's `startingCash`, `housingTarget` and `goldScore` can each be a number or `{ student, teacher }`. Student asks for about half as many new residents: River estuary 9 (Teacher 16, start 2), Mill valley 19 (Teacher 24, start 13). Title screen option "Level", URL flag `?difficulty=teacher`, `--difficulty` in the simulator; high scores are kept per level.
+67. **An easier Mill valley.** The factory and Cluck Towers are gone from the start (both became bare ground), removing 6 waste a turn beside the river, but also Cluck Towers' 3 food: the valley now starts buying 2 food a turn.
+68. **Gold scores** are about the greedy bot's average on each level: River estuary £880 (Student) and £730 (Teacher), Mill valley £810 and £790.
+
+#### Balance after 62 to 68
+
+`npm run simulate -- --games 60 --bot all --map ... --difficulty ...` (`reports/simulate-<map>-<level>.txt`). Medal rate is any medal.
+
+| Map | Level | Bot | Score | Waste bills | Pollution at end | Fed at end | Medal rate |
+|---|---|---|---|---|---|---|---|
+| Estuary | Student | greedy | £884 | £21 | 0.2 | 97% | 97% |
+| Estuary | Student | nature | £491 | £18 | 0.0 | 95% | 93% |
+| Estuary | Student | balanced | £908 | £58 | 2.0 | 100% | 98% |
+| Estuary | Student | repair | £910 | £56 | 1.5 | 100% | 98% |
+| Estuary | Teacher | greedy | £735 | £27 | 0.1 | 27% | 25% |
+| Estuary | Teacher | nature | £509 | £39 | 0.0 | 55% | 50% |
+| Estuary | Teacher | balanced | £790 | £64 | 3.5 | 50% | 38% |
+| Estuary | Teacher | repair | £780 | £63 | 2.3 | 67% | 57% |
+| Mill valley | Student | greedy | £818 | £158 | 0.1 | 63% | 60% |
+| Mill valley | Student | nature | £511 | £235 | 5.6 | 97% | 85% |
+| Mill valley | Student | balanced | £488 | £513 | 66.8 | 77% | 77% |
+| Mill valley | Student | repair | £645 | £217 | 21.9 | 83% | 68% |
+| Mill valley | Teacher | greedy | £797 | £163 | 0.1 | 10% | 2% |
+| Mill valley | Teacher | nature | £451 | £290 | 18.6 | 88% | 73% |
+| Mill valley | Teacher | balanced | £476 | £517 | 66.9 | 37% | 30% |
+| Mill valley | Teacher | repair | £598 | £224 | 24.2 | 25% | 10% |
+
+Before 62 to 68 (NOTES 53 to 61, Teacher-sized targets), Mill valley waste bills were £600 to £760 a game, pollution 80 to 125, and medal rates 4 to 56%; greedy scored £438 there.
+
+- **Student is a comfortable first game:** sensible bots earn a medal in 68 to 98% of games on both maps. **Teacher** keeps the old challenge, mainly through food: most failures are "not fed on the last turn".
+- **Mill valley's waste is now manageable.** Bills fell by two thirds or more for greedy and repair, and pollution ends near 0 for greedy (which now restores and places beaver dams). Balanced still pollutes heavily (it avoids restoring), so the spread between careless and careful play is still visible.
+- **Beavers are used:** greedy and nature place about 2 dams a game (10-game counts); balanced and repair never restore rivers.
+- **Bots never build the sewage works:** it only pays back over several turns. Forced tests (menu mode, 12 games, works placed on turn 3 and compared with passing that turn): on Mill valley Student with the balanced bot, a works high on the river (row 3, above most of the town) scored +£40, cut waste bills by about £160 and pollution from 62 to 38, and never overflowed; lower down, more than 16 residents drain into it and it overflowed 8 to 15 times a game and lost money. For the cleaner repair bot, and on the estuary, it never paid. So it is a niche tool whose value depends on where it goes, which is the intended lesson; see TODO.
+- **Passing a turn early is expensive** on the estuary (about −£190 for the balanced bot on turn 3), which is worth knowing when judging any action that costs a turn.
+
 Open questions and future work are in `TODO.md`.
