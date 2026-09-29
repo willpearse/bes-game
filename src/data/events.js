@@ -2,7 +2,7 @@
 // destroys: some hit tiles are wrecked and become bare ground (CONFIG.eventDestroyShare of them, most exposed first).
 export const EVENTS = {
   riverFlood: {
-    name: 'River flood', verb: 'the river flood', destroys: true,
+    name: 'River flood', verb: 'the river flood', destroys: true, overflowsSewage: true,
     atRisk: [{ nearHabitats: ['river', 'lake'], radius: 1 }],
     protection: [{ service: 'WAT', min: 3 }],
     blurb: 'Heavy rain upstream. Tiles next to rivers and lakes are at risk unless wetlands and woods hold the water back.'

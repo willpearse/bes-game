@@ -445,6 +445,18 @@ B.factory = () => {
   return cv.rows();
 };
 
+// Sewage works on a river square: two round settling tanks and a pump house; the river shows round them.
+B.sewageWorks = () => {
+  const cv = new Canvas();
+  cv.circle(10, 10, 7, 'f').circle(10, 10, 5, 'c').ellipse(8, 8, 2, 1, '4');
+  cv.circle(21, 21, 7, 'f').circle(21, 21, 5, '3').ellipse(19, 19, 2, 1, '8');
+  cv.line(10, 10, 14, 6, '2').line(21, 21, 25, 17, '2');
+  cv.rrect(19, 3, 10, 9, 1, '4').poly([[18, 4], [24, 0], [30, 4]], 'd').rrect(22, 7, 3, 5, 1, '2');
+  cv.rrect(3, 22, 9, 7, 1, 'f').rect(5, 24, 5, 2, 'e');
+  cv.outline();
+  return cv.rows();
+};
+
 const boat = (cv, x, y) => {
   cv.poly([[x - 7, y], [x + 7, y], [x + 5, y + 4], [x - 5, y + 4]], 'd');
   cv.rect(x - 7, y, 14, 1, '4');
@@ -578,6 +590,18 @@ I.reserveMark = () => {
   return cv.rows();
 };
 
+// A beaver dam across a river square: a band of logs and sticks, with a beaver on top.
+I.damMark = () => {
+  const cv = new Canvas();
+  cv.rrect(2, 15, 28, 7, 3, '2');
+  for (const [x0, y0, x1, y1] of [[3, 16, 13, 18], [9, 19, 22, 17], [17, 16, 29, 19], [5, 20, 16, 21], [20, 21, 28, 20]]) cv.line(x0, y0, x1, y1, '1');
+  for (const x of [6, 14, 23]) cv.set(x, 17, '3');
+  cv.ellipse(20, 12, 4, 3, '1').circle(24, 10, 2.5, '1').set(25, 9, '0').set(26, 11, '3');
+  cv.ellipse(14, 13, 3, 1.5, '2');
+  cv.outline();
+  return cv.rows();
+};
+
 I.sapling = () => {
   const cv = new Canvas();
   cv.line(16, 30, 16, 22, '2', 2);
@@ -629,6 +653,17 @@ I.act_rewetPeat = () => {
   cv.rect(15, 11, 4, 18, '2').rect(15, 11, 4, 1, '3').rect(16, 14, 2, 1, '1').rect(16, 20, 2, 1, '1');
   cv.rect(19, 22, 11, 3, '3');
   cv.ellipse(6, 13, 3, 2, '7').ellipse(26, 14, 3, 2, '6');
+  cv.outline();
+  return cv.rows();
+};
+
+I.act_beaverDam = () => {
+  const cv = new Canvas();
+  cv.ellipse(16, 27, 14, 3.5, 'b').ellipse(10, 27, 4, 1, 'c');
+  cv.rrect(3, 20, 26, 6, 3, '2').line(4, 21, 14, 23, '1').line(12, 24, 27, 21, '1');
+  cv.ellipse(15, 12, 8, 6, '2').circle(21, 7, 4.5, '2').circle(18, 3.5, 1.5, '2');
+  cv.set(22, 6, '0').set(25, 8, '0').rect(23, 10, 2, 2, '4');
+  cv.ellipse(7, 17, 4, 2, '1');
   cv.outline();
   return cv.rows();
 };

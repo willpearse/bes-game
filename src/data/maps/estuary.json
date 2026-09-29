@@ -18,7 +18,7 @@
   "startingBuildings": { "#": "cottages" },
   "startingBuildingHabitat": "meadow",
   "startingCash": 10,
-  "housingTarget": 16,
-  "goldScore": 660,
+  "housingTarget": { "student": 9, "teacher": 16 },
+  "goldScore": { "student": 880, "teacher": 730 },
   "elevation": "valleyFormula"
 }

@@ -2,7 +2,8 @@
 import { CONFIG } from '../data/config.js';
 import { HABITATS } from '../data/habitats.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { cellAt, idx, ortho, isBuilt, isNature, isMarine, round1 } from './grid.js';
+import { RESTORATIONS } from '../data/restorations.js';
+import { cellAt, idx, ortho, isBuilt, isNature, isMarine, isResidential, round1 } from './grid.js';
 import { cellB } from './intensity.js';
 
 const cfg = (state) => state.config ?? CONFIG;
@@ -20,13 +21,54 @@ export function wasteTokensAt(state, cell) {
   return 0;
 }
 
-// Clean capacity of a nature land cell (not river, lake or sea): its water service supply, rounded down.
+// Clean capacity of a nature land cell (not river, lake or sea): its water service supply, rounded
+// (CONFIG.cleanRounding 0.5 rounds to the nearest whole token, 0 rounds down). A beaver dam on a river
+// square cleans RESTORATIONS.beaverDam.cleans the same way.
 // Worn or young habitat has a lower B, so it supplies less and cleans less.
-export function cleanCapacity(cell) {
+export function cleanCapacity(cell, state = null) {
   if (!isNature(cell)) return 0;
   const h = HABITATS[cell.habitat];
-  if (h.marine || h.water) return 0;
-  return Math.floor(Math.round(h.services.WAT * cellB(cell) * 1000) / 1000);
+  const c = state ? cfg(state) : CONFIG;
+  let base;
+  if (cell.dam) base = RESTORATIONS.beaverDam.cleans;
+  else if (h.marine || h.water) return 0;
+  else base = h.services.WAT;
+  return Math.floor(Math.round((base * cellB(cell) + c.cleanRounding) * 1000) / 1000);
+}
+
+export function isSewageWorks(cell) {
+  return isBuilt(cell) && !!BUILDINGS[cell.building].sewage;
+}
+
+// Residents whose waste drains through this cell: homes whose downhill path (as waste flows) passes it.
+export function residentsUpstream(state, target) {
+  let total = 0;
+  for (const cell of state.cells) {
+    if (!isResidential(cell)) continue;
+    let at = cell;
+    for (let n = 0; n < state.cells.length; n++) {
+      at = flowTarget(state, at);
+      if (!at || isSink(at)) break;
+      if (at === target) {
+        total += BUILDINGS[cell.building].residents;
+        break;
+      }
+    }
+  }
+  return total;
+}
+
+// A storm overflow: the sewage works releases everything in its tank onto the next square downstream
+// (or into the sea or lake). Returns the number of tokens released.
+export function overflow(state, cell) {
+  const n = cell.tank;
+  if (n <= 0) return 0;
+  cell.tank = 0;
+  const t = flowTarget(state, cell);
+  if (!t) cell.waste += n;
+  else if (isSink(t)) state.pollution = round1(state.pollution + n);
+  else t.waste += n;
+  return n;
 }
 
 function removeFrom(cell, n) {
@@ -90,23 +132,36 @@ export function resolveWasteTokens(state, log) {
   }
 
   // 2. Clean: each nature land cell cleans its own cell, then river cells N, E, S, W of it,
-  // up to its capacity.
-  for (const cell of state.cells) {
-    let left = cleanCapacity(cell);
-    for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
-      if (left <= 0) break;
-      const r = removeFrom(t, left);
-      left -= r;
-      record.cleaned += r;
+  // up to its capacity for the turn. It cleans again after each move, so waste flowing past is caught too.
+  const capLeft = state.cells.map((cell) => cleanCapacity(cell, state));
+  const cleanPass = () => {
+    state.cells.forEach((cell, i) => {
+      for (const t of [cell, ...ortho(state, cell.row, cell.col).filter(isRiver)]) {
+        if (capLeft[i] <= 0) break;
+        const r = removeFrom(t, capLeft[i]);
+        capLeft[i] -= r;
+        record.cleaned += r;
+      }
+    });
+  };
+  // Sewage works catch everything that reaches them in their tank.
+  const works = state.cells.filter(isSewageWorks);
+  const capture = () => {
+    for (const w of works) {
+      w.tank += w.waste;
+      w.waste = 0;
     }
-  }
+  };
+  capture();
+  cleanPass();
   // 3-4. Move simultaneously, with river tokens continuing up to riverMaxSteps. Sinks absorb.
+  // A beaver dam holds waste that reaches it until the next turn.
   for (let step = 1; step <= c.riverMaxSteps; step++) {
     const delta = new Array(state.cells.length).fill(0);
     let moved = false;
     for (const cell of state.cells) {
       if (cell.waste <= 0) continue;
-      if (step > 1 && !isRiver(cell)) continue;
+      if (step > 1 && (!isRiver(cell) || cell.dam)) continue;
       const target = flowTarget(state, cell);
       if (!target) continue;
       const n = cell.waste;
@@ -126,6 +181,24 @@ export function resolveWasteTokens(state, log) {
         cell.waste = 0;
       }
     }
+    capture();
+    cleanPass();
+  }
+
+  // 5. Sewage works treat what is in their tank, unless too many residents drain through them:
+  // then the sewers overflow and the whole tank goes back into the river.
+  record.treated = 0;
+  record.overflows = [];
+  for (const w of works) {
+    const upstream = residentsUpstream(state, w);
+    if (upstream > c.sewageResidentsMax) {
+      const count = overflow(state, w);
+      if (count) record.overflows.push({ row: w.row, col: w.col, count, reason: 'homes', upstream });
+    } else {
+      const t = Math.min(w.tank, c.sewageTreatPerTurn);
+      w.tank -= t;
+      record.treated += t;
+    }
   }
 
   seaRecovery(state, record);
@@ -142,7 +215,7 @@ export function resolveWasteSimple(state, log) {
     produced += r.made;
     released += r.released;
   }
-  for (const cell of state.cells) capacity += cleanCapacity(cell);
+  for (const cell of state.cells) capacity += cleanCapacity(cell, state);
   const toSea = Math.max(0, released - capacity);
   state.pollution += toSea;
   const record = { produced, absorbed: produced - released, cleaned: Math.min(released, capacity), released, moves: [], toSea, toLake: 0 };

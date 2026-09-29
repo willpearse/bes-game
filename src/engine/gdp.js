@@ -59,9 +59,13 @@ export function fertiliser(state, cell) {
   return cell.soil == null ? 0 : (c.soilMax - cell.soil) * c.fertiliserPerPoint;
 }
 
-// Running costs of one built tile this turn: its waste bill plus any fertiliser.
+// Running costs of one built tile this turn: its waste bill, any fertiliser and any upkeep.
 function tileCosts(state, cell, released) {
-  return round1(released * wasteBillRate(state) + fertiliser(state, cell));
+  return round1(released * wasteBillRate(state) + fertiliser(state, cell) + upkeep(cell));
+}
+
+export function upkeep(cell) {
+  return BUILDINGS[cell.building].upkeep ?? 0;
 }
 
 // Net GDP of one built tile this turn (income minus waste bill and fertiliser), before the happiness multiplier.

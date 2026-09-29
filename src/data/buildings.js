@@ -1,6 +1,8 @@
 // Built tiles (section 6).
 // uses: services that change the tile's GDP or its residents' wellbeing (animated as deliveries).
-// placement: landNextToBuilt | moorOrHeath | landAnywhere | seaNextToBuiltLand | seaAnywhere
+// placement: landNextToBuilt | moorOrHeath | landAnywhere | seaNextToBuiltLand | seaAnywhere | river
+// upkeep: running cost each turn, paid whatever else happens.
+// sewage: the tile is a sewage works (see CONFIG.sewageTreatPerTurn and engine/waste.js).
 // waste: tokens made each turn. Nature touching the tile soaks some up (see CONFIG.wasteAbsorbDivisor); the rest
 //   costs CONFIG.wasteBillPerToken each (the waste bill) and flows downhill.
 // food: food made each turn, interpreted like gdp (base, serviceBonus). Residents eat CONFIG.foodPerResident each.
@@ -84,6 +86,12 @@ export const BUILDINGS = {
     gdp: { base: 6 }, waste: 3, residents: 0, pressure: 2, nuisance: 2,
     placement: 'landNextToBuilt', tags: [],
     tip: 'Big earner, big mess.'
+  },
+  sewageWorks: {
+    name: 'Sewage works', role: 'water treatment', landUse: 'urban', intensity: 'light', cost: 8,
+    gdp: { base: 0 }, upkeep: 2, waste: 0, residents: 0, pressure: 1, sewage: true,
+    placement: 'river', notBuiltNeighbour: true, tags: [],
+    tip: 'Treats the waste flowing down the river. Costs £2 a turn to run. Too many homes upstream, or a flood, and it overflows.'
   },
   fishingFleet: {
     name: 'Fishing fleet', role: 'fishing', landUse: 'urban', intensity: 'intense', cost: 4,

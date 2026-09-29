@@ -27,6 +27,7 @@ npm test             # Vitest engine tests (tests/*.test.js)
 npm run coverage     # engine line coverage (target > 90%)
 npm run build        # static build into dist/ (relative base, works on GitHub Pages)
 npm run simulate -- --games 500 --bot all      # headless balance run (random | greedy | nature | balanced | repair | both | all)
+npm run simulate -- --games 100 --bot all --map millValley --difficulty teacher   # Student is the default level
 npm run simulate -- --trace --bot greedy --map millValley --seed 5   # one game, turn by turn
 npm run simulate -- --games 100 --bot repair --set wasteBillMax=1  # try a CONFIG number without editing files
 npm run payoff -- --games 300                  # building pay-off by touching nature, observed vs theory
@@ -58,7 +59,8 @@ src/
     services.js        supply, services received (4 touching squares), topContributor(), deliveries()
     happiness.js       wellbeing and happiness
     gdp.js             tile income, waste bill + fertiliser, food, happiness multiplier, counterfactuals
-    waste.js           waste soaked up at source, bill rate, token flow (downhill, rivers, sinks), cleaning
+    waste.js           waste soaked up at source, bill rate, token flow (downhill, rivers, sinks), cleaning,
+                       beaver dams, sewage works (tank, treatment, storm overflows)
     events.js          events: tiles at risk, protection, damage, wrecked tiles (bare ground), reports
     objectives.js      objective evaluation
     market.js          stage piles, market shifting, menu unlocks
@@ -86,7 +88,7 @@ public/                favicon, web app manifest, home-screen icons
 
 `takeTurn` applies the action, then in order: market update, intensity, Primary loss, succession, supply, services received, happiness, GDP (plus counterfactuals), waste, event, advance turn. The `log` it returns drives all animations and messages (GDP floats, waste token moves, events, toasts).
 
-There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − fertiliser (farms with worn soil) − food bought. Floods and storm surges wreck the most exposed tiles they hit, leaving bare ground. Each map has a housing target checked at the end, and the end screen awards a medal (bronze: target met and everyone fed; silver: plus objectives; gold: plus the map's `goldScore`; platinum: a gold that beats your best on this device for this build). Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
+There are three services: POL (pollination), GRN (green space and clean air), WAT (clean water and flood protection). A built tile receives each from the four squares touching it. Turn GDP is income × happiness multiplier − waste bills − fertiliser (farms with worn soil) − upkeep (sewage works) − food bought. Floods and storm surges wreck the most exposed tiles they hit, leaving bare ground; a flood also makes every sewage works overflow. Each map has a housing target checked at the end (set per level: Student or Teacher), and the end screen awards a medal (bronze: target met and everyone fed; silver: plus objectives; gold: plus the map's `goldScore`; platinum: a gold that beats your best on this device for this build). Biodiversity (B, intactness, ancient habitat) never adds to GDP; it is scored through objectives and shown on the end screen. See `MECHANICS.md` for the full rules.
 
 ## Balance workflow
 
@@ -101,4 +103,4 @@ Bots in `scripts/bots.js` are one-sentence rules (random, greedy, nature, balanc
 
 ## Variants and settings
 
-`src/data/config.js` holds `CONFIG` (and `MAP_DEFAULTS` for starting cash, housing target and gold score, which each map can set in its JSON). High scores are kept in localStorage per commit (`__COMMIT__`, set in `vite.config.js`), so scores from older rules never count. URL flags override it: `?map=millValley&market=menu&waste=simple&happiness=endGame&seed=42`. The title screen offers the map, tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste is always on in normal play.
+`src/data/config.js` holds `CONFIG` (and `MAP_DEFAULTS` for starting cash, housing target and gold score, which each map can set in its JSON, either as one number or as `{ student, teacher }`; `CONFIG.difficulty` picks the level). High scores are kept in localStorage per commit (`__COMMIT__`, set in `vite.config.js`), so scores from older rules never count. URL flags override it: `?map=millValley&difficulty=teacher&market=menu&waste=simple&happiness=endGame&seed=42`. The title screen offers the map, the level (Student or Teacher), tiles (market or menu), happiness timing, the nature-at-work animations, the seed and the objective choice. Flowing waste is always on in normal play.

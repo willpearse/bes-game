@@ -52,7 +52,7 @@ describe('market', () => {
     expect(s.turn).toBe(9);
     expect(s.stage).toBe('B');
     expect(s.market.piles.A).toHaveLength(0);
-    expect(s.market.piles.B).toHaveLength(14);
+    expect(s.market.piles.B).toHaveLength(15);
     const nextB = s.market.piles.B[0];
     s = takeTurn(s, { type: 'pass' }).state;
     expect(s.market.slots[5]).toBe(nextB);
@@ -151,7 +151,7 @@ describe('preview', () => {
   it('reports GDP, services, intensity changes, happiness and warnings', () => {
     const s = createGame({ seed: 1, config: { marketMode: 'menu' } });
     const p = preview(s, { type: 'build', building: 'cottages' }, 3, 5);
-    expect(p.gdp).toBe(1 - (p.received.WAT >= 2 ? 0 : 1)); // income 1, less a £1 bill unless nature soaks up its waste
+    expect(p.gdp).toBe(1 - (Math.floor(p.received.WAT / s.config.wasteAbsorbDivisor) >= 1 ? 0 : 1)); // income 1, less a £1 bill unless nature soaks up its waste
     expect(p.received.GRN).toBeGreaterThan(0);
     expect(p.cost).toBe(2);
     expect(p.intensityChanges.length).toBeGreaterThan(0);
@@ -426,7 +426,7 @@ describe('objectives', () => {
     for (let i = 0; i < 24; i++) s = takeTurn(s, { type: 'pass' }).state;
     expect(s.final.objectiveBonus).toBe(s.final.objectives.filter((o) => o.met).length * 50);
     expect(s.final.score).toBeCloseTo(s.final.gdpAfterDamage + s.final.objectiveBonus - s.final.housingPenalty, 5);
-    expect(s.final.housingShortfall).toBe(16 - 2);
+    expect(s.final.housingShortfall).toBe(9 - 2); // student target on the estuary
   });
   it('endGame happiness mode multiplies total GDP at the end', () => {
     let s = createGame({ seed: 8, config: { happinessMode: 'endGame' } });
@@ -451,6 +451,12 @@ describe('crossing rivers', () => {
     expect(legalTargets(s, { type: 'build', building: 'cottages' })).toHaveLength(0);
     const d = tinyGame(['gr', 'r#']);
     expect(legalTargets(d, { type: 'build', building: 'cottages' })).toHaveLength(0);
+  });
+  it('still crosses a river square with a sewage works on it', () => {
+    const s = tinyGame(['ggg', 'rrr', 'g#g']);
+    placeBuilding(at(s, 1, 1), 'sewageWorks');
+    const keys = legalTargets(s, { type: 'build', building: 'cottages' }).map((t) => `${t.row},${t.col}`).sort();
+    expect(keys).toEqual(['0,1', '2,0', '2,2']); // the works itself does not let the town grow beside it
   });
   it('does not bridge from fishing fleets or wind farms', () => {
     const s = tinyGame(['grF'], { buildings: { F: 'fishingFleet' } });

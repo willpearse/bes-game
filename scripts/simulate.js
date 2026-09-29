@@ -3,7 +3,7 @@
 //   npm run simulate -- --games 500 --bot greedy
 // Options: --games N (default 100), --bot random|greedy|nature|balanced|repair|both|all or a comma list
 //          (default both = random and greedy), --seed S (first seed, default 1),
-//          --map estuary|millValley, --market menu, --waste simple, --happiness endGame (as the URL flags).
+//          --map estuary|millValley, --difficulty student|teacher, --market menu, --waste simple, --happiness endGame (as the URL flags).
 //          --set key=value,key=value overrides CONFIG numbers for tuning (for example --set wasteBillMax=2).
 //          --trace prints every turn of one game per bot (seed S) instead of the summary:
 //            npm run simulate -- --trace --bot greedy --map millValley --seed 5

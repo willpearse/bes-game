@@ -38,6 +38,8 @@ function makeCell(row, col, habitat, landUse) {
     restored: false,
     reserve: false,
     reserveAge: null,
+    dam: false,           // a beaver dam on a river square
+    tank: 0,              // waste held by a sewage works, waiting to be treated
     soil: null,           // soil health 0..soilMax on farms that have it, else null
     pressure: 0,
     B: 0,
@@ -111,6 +113,12 @@ export function chooseObjectives(offer, chosen, count) {
   return ok ? chosen.slice() : offer.slice(0, count);
 }
 
+// A map setting can be one number, or one per difficulty ({ student, teacher }).
+export function forDifficulty(value, difficulty) {
+  if (value == null || typeof value !== 'object') return value;
+  return value[difficulty] ?? value.teacher;
+}
+
 export function createGame({ mapId, config, seed, map: customMap } = {}) {
   const cfg = { ...CONFIG, ...(config ?? {}) };
   if (mapId) cfg.mapId = mapId;
@@ -132,9 +140,9 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     stage: 'A',
     gameOver: false,
     // Explicit config beats the map, which beats the CONFIG default.
-    cash: config?.startingCash ?? map.startingCash ?? MAP_DEFAULTS.startingCash,
-    housingTarget: config?.housingTarget ?? map.housingTarget ?? MAP_DEFAULTS.housingTarget,
-    goldScore: config?.goldScore ?? map.goldScore ?? MAP_DEFAULTS.goldScore,
+    cash: config?.startingCash ?? forDifficulty(map.startingCash, cfg.difficulty) ?? MAP_DEFAULTS.startingCash,
+    housingTarget: config?.housingTarget ?? forDifficulty(map.housingTarget, cfg.difficulty) ?? MAP_DEFAULTS.housingTarget,
+    goldScore: config?.goldScore ?? forDifficulty(map.goldScore, cfg.difficulty) ?? MAP_DEFAULTS.goldScore,
     food: null,           // { made, need, bought, cost } this turn
     score: 0,
     gdpEarned: 0,
@@ -150,7 +158,7 @@ export function createGame({ mapId, config, seed, map: customMap } = {}) {
     objectives: [],
     startPrimary: [],
     stats: { primaryLost: 0, eventHits: 0, eventPotentialDamage: 0, eventDamageAvoided: 0, startIntactness: 0, restorations: 0,
-      foodCost: 0, wasteBill: 0, fertiliser: 0, destroyed: 0 },
+      foodCost: 0, wasteBill: 0, fertiliser: 0, upkeep: 0, destroyed: 0 },
     startHabitats: {},
     objectiveOffer: [],
     // Running GDP totals: actual, with no nature, and without each service. income holds the income-only

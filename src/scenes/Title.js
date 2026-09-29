@@ -13,7 +13,9 @@ import { randomSeed } from '../engine/rng.js';
 // URL flags (?waste=simple&pressure=0) for testing, but are not offered here.
 const OPTIONS = [
   { key: 'mapId', label: 'Map', choices: [['estuary', 'River estuary'], ['millValley', 'Mill valley']],
-    tip: 'River estuary: wild, healthy land and a tiny village; aim for 16 residents. Mill valley: a busy, worn valley with a town, farms and a mill; aim for 30.' },
+    tip: 'River estuary: wild, healthy land and a tiny village. Mill valley: a worn valley with a town and farms, where the old mill has closed.' },
+  { key: 'difficulty', label: 'Level', choices: [['student', 'Student'], ['teacher', 'Teacher']],
+    tip: 'Student: a smaller housing target (River estuary 9 residents, Mill valley 19). Teacher: the full target (16 and 24), so more mouths to feed.' },
   { key: 'marketMode', label: 'Tiles', choices: [['market', 'Market'], ['menu', 'Menu']],
     tip: 'Market: take tiles from a changing row of 6. Menu: build anything unlocked.' },
   { key: 'happinessMode', label: 'Happiness', choices: [['perTurn', 'Every turn'], ['endGame', 'At the end']],
@@ -33,6 +35,7 @@ export class Title extends Phaser.Scene {
     this.cfg = {
       ...CONFIG,
       mapId: saved.mapId ?? CONFIG.mapId,
+      difficulty: saved.difficulty ?? CONFIG.difficulty,
       marketMode: saved.marketMode ?? CONFIG.marketMode,
       happinessMode: saved.happinessMode ?? CONFIG.happinessMode,
       ...url,
@@ -77,11 +80,11 @@ export class Title extends Phaser.Scene {
       { size: 14, color: UI.text, lineSpacing: 5 });
 
     // Settings.
-    panel(this, 60, 322, 640, 262);
+    panel(this, 60, 322, 640, 284);
     text(this, 80, 332, 'Game settings', { size: 17, bold: true, color: UI.gold });
     this.optionButtons = [];
     OPTIONS.forEach((opt, i) => {
-      const y = 364 + i * 42;
+      const y = 360 + i * 38;
       text(this, 80, y + 8, opt.label, { size: 15 });
       opt.choices.forEach(([value, label], j) => {
         const b = button(this, 220 + j * 170, y, 160, 32, label, () => {
@@ -94,7 +97,7 @@ export class Title extends Phaser.Scene {
         this.optionButtons.push(b);
       });
     });
-    const sy = 364 + OPTIONS.length * 42;
+    const sy = 360 + OPTIONS.length * 38;
     text(this, 80, sy + 8, 'Seed', { size: 15 });
     this.seedButton = button(this, 220, sy, 160, 32, '', () => {
       this.editingSeed = true;
@@ -106,13 +109,13 @@ export class Title extends Phaser.Scene {
       this.editingSeed = false;
       this.refresh();
     });
-    this.tip = text(this, 80, sy + 44, '', { size: 12, color: UI.dim, wrap: 600 });
+    this.tip = text(this, 80, sy + 38, '', { size: 12, color: UI.dim, wrap: 600 });
 
     // High scores.
-    panel(this, 60, 594, 640, 72);
-    this.scoreTitle = text(this, 80, 600, 'High scores', { size: 14, bold: true, color: UI.gold });
-    this.scoreVariant = text(this, 200, 602, '', { size: 11, color: UI.dim });
-    this.scoreList = text(this, 80, 622, '', { size: 12, lineSpacing: 2, wrap: 600 });
+    panel(this, 60, 612, 640, 56);
+    this.scoreTitle = text(this, 80, 616, 'High scores', { size: 14, bold: true, color: UI.gold });
+    this.scoreVariant = text(this, 200, 618, '', { size: 11, color: UI.dim });
+    this.scoreList = text(this, 80, 638, '', { size: 12, lineSpacing: 2, wrap: 600 });
 
     // Objectives: pick 2 of the 4 on offer.
     panel(this, 740, 60, 480, 500);
@@ -209,7 +212,7 @@ export class Title extends Phaser.Scene {
     if (this.chosen.length !== this.cfg.objectiveCount) return;
     const { animations, ...rest } = this.cfg;
     const cfg = { ...rest, seed: this.currentSeed(), objectives: this.chosen.slice() };
-    saveSettings({ mapId: cfg.mapId, marketMode: cfg.marketMode, happinessMode: cfg.happinessMode });
+    saveSettings({ mapId: cfg.mapId, difficulty: cfg.difficulty, marketMode: cfg.marketMode, happinessMode: cfg.happinessMode });
     this.scene.start('Game', { config: cfg });
   }
 }

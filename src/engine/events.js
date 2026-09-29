@@ -5,6 +5,7 @@ import { HABITATS } from '../data/habitats.js';
 import { within, cellAt, isBuilt, isMarine, isLand, hasTag, cellName, round1 } from './grid.js';
 import { random } from './rng.js';
 import { topContributor } from './services.js';
+import { isSewageWorks, overflow } from './waste.js';
 
 const cfg = (state) => state.config ?? CONFIG;
 
@@ -67,6 +68,14 @@ export function resolveEvent(state, eventId, log) {
   }
   damage = round1(damage);
   potential = round1(potential);
+  // Storm overflows: floodwater fills the sewers and every sewage works releases its tank.
+  const overflows = [];
+  if (event.overflowsSewage) {
+    for (const w of state.cells.filter(isSewageWorks)) {
+      const count = overflow(state, w);
+      if (count) overflows.push({ row: w.row, col: w.col, count, reason: 'flood' });
+    }
+  }
   const destroyed = event.destroys ? wreckTiles(state, hit) : [];
   state.cash = round1(Math.max(0, state.cash - damage));
   state.eventDamage = round1(state.eventDamage + damage);
@@ -90,7 +99,7 @@ export function resolveEvent(state, eventId, log) {
 
   const report = {
     type: 'event', id: eventId, name: event.name, turn: state.turn,
-    hit, protected: protectedTiles, protectors, messages, destroyed,
+    hit, protected: protectedTiles, protectors, messages, destroyed, overflows,
     damage, potential, avoided: round1(potential - damage)
   };
   state.eventHistory.push(report);
@@ -99,7 +108,8 @@ export function resolveEvent(state, eventId, log) {
 }
 
 // Wrecks the most exposed of the hit tiles (largest shortfall of the protecting service; ties broken at random by the
-// seeded RNG): eventDestroyShare of them, rounded. They become bare ground. Returns the wrecked tiles.
+// seeded RNG): eventDestroyShare of them, rounded. They become bare ground (a sewage works goes back to river).
+// Returns the wrecked tiles.
 export function wreckTiles(state, hit) {
   const n = Math.round(hit.length * cfg(state).eventDestroyShare);
   if (n === 0) return [];
@@ -110,9 +120,10 @@ export function wreckTiles(state, hit) {
     .map(({ h }) => h);
   for (const h of ranked) {
     const cell = cellAt(state, h.row, h.col);
+    const river = cell.habitat === 'river';
     Object.assign(cell, {
-      kind: 'nature', building: null, habitat: 'bare', landUse: HABITATS.bare.landUse,
-      age: 0, restored: false, soil: null, gdp: 0, wellbeing: null
+      kind: 'nature', building: null, habitat: river ? 'river' : 'bare', landUse: river ? 'matureSecondary' : HABITATS.bare.landUse,
+      age: 0, restored: false, soil: null, gdp: 0, wellbeing: null, tank: 0
     });
   }
   state.stats.destroyed = (state.stats.destroyed ?? 0) + ranked.length;

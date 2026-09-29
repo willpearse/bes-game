@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, valleyElevation } from '../src/engine/state.js';
+import { createGame, valleyElevation, forDifficulty } from '../src/engine/state.js';
 import { takeTurn, legalTargets } from '../src/engine/actions.js';
 import { mulberry32, seedToInt, shuffle, random } from '../src/engine/rng.js';
 import { intensityForPressure, biodiversityValue } from '../src/engine/intensity.js';
@@ -56,8 +56,8 @@ describe('createGame', () => {
     expect(s.cash).toBe(10);
     expect(s.turn).toBe(1);
     expect(s.market.slots).toHaveLength(6);
-    expect(s.market.piles.A).toHaveLength(15);
-    expect(s.market.piles.B).toHaveLength(14);
+    expect(s.market.piles.A).toHaveLength(16);
+    expect(s.market.piles.B).toHaveLength(15);
     expect(s.market.piles.C).toHaveLength(14);
     expect(s.events.map((e) => e.turn)).toEqual([8, 16, 24]);
     expect(new Set(s.events.map((e) => e.id)).size).toBe(3);
@@ -203,11 +203,12 @@ describe('maps', () => {
     const s = createGame({ seed: 1, mapId: 'millValley' });
     expect(s.mapName).toBe('Mill valley');
     expect(s.cash).toBe(15);
-    expect(s.housingTarget).toBe(24);
-    expect(s.residents).toBeGreaterThan(10);
+    expect(s.housingTarget).toBe(19); // student, the default
+    expect(createGame({ seed: 1, mapId: 'millValley', config: { difficulty: 'teacher' } }).housingTarget).toBe(24);
+    expect(s.residents).toBe(13);
     const hill = s.cells.find((c) => c.building === 'hillFarm');
     expect(hill.habitat).toBe('moorland'); // { building, habitat } form of startingBuildings
-    expect(s.cells.find((c) => c.building === 'factory')).toBeTruthy();
+    expect(s.cells.find((c) => c.building === 'factory')).toBeFalsy(); // the mill has closed
     // Explicit config still beats the map.
     expect(createGame({ seed: 1, mapId: 'millValley', config: { startingCash: 3, housingTarget: 7 } })).toMatchObject({ cash: 3, housingTarget: 7 });
   });
@@ -223,7 +224,10 @@ describe('maps', () => {
 describe('map defaults', () => {
   it('uses the map values when the config is the full CONFIG (as the title screen passes it)', () => {
     const s = createGame({ seed: 1, config: { ...CONFIG, mapId: 'millValley' } });
-    expect(s).toMatchObject({ cash: 15, housingTarget: 24 });
+    expect(s).toMatchObject({ cash: 15, housingTarget: 19 });
+    expect(forDifficulty({ student: 1, teacher: 2 }, 'teacher')).toBe(2);
+    expect(forDifficulty({ teacher: 2 }, 'student')).toBe(2); // falls back to teacher
+    expect(forDifficulty(5, 'student')).toBe(5);
     const t = tinyGame(['#g']);
     expect(t).toMatchObject({ cash: 10, housingTarget: 16 }); // MAP_DEFAULTS for a map without its own
   });
