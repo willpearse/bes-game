@@ -5,7 +5,7 @@ export default defineConfig({
     include: ['tests/**/*.test.js'],
     coverage: {
       provider: 'v8',
-      include: ['src/engine/**/*.js'],
+      include: ['src/engine/**/*.js', 'src/little/engine/**/*.js'],
       reporter: ['text', 'text-summary']
     }
   }

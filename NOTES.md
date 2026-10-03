@@ -253,4 +253,19 @@ What stands out, compared with the five-service version:
 - **Tools:** `simulate` now prints actions per game (builds, restores, restores in the first half, passes), and `--trace` prints one game turn by turn (action, square, food, residents, pollution, turn GDP, cash, events).
 - **Food runs out in stage C for every bot.** The stage C market pile has no family farms, hill farms or fishing fleets and only one Cluck Towers, while tower blocks keep coming. That, not bot behaviour, is the main reason "fed on the last turn" (and so bronze) fails so often. See TODO.
 
+## Little Green (designer's request)
+
+A simplified game for reception-age children, built alongside the main game (`little.html`, `src/little/`). The designer asked for very bright colours and only pollination, waste and heatwaves. Interpretations:
+
+- **Where it lives:** the same repo with its own entry page, engine and scenes, so the main game is untouched. It reuses `engine/rng.js` and the camera helpers.
+- **No reading:** spoken lines (browser speech), faces, wish bubbles and sounds carry everything. The designer chose this over pictures only or a few big words.
+- **Goal:** a short game (8 turns) with up to three stars and no money or losing.
+- **Pollination** is the main game's POL rule cut to one step: flowers touching a veg patch grow strawberries.
+- **Waste** keeps "nature touching a building soaks up its waste" and "the rest flows into the water", without bills or flow paths. Reeds beside the stream also clean it, so a mucky stream can always be fixed.
+- **Heatwave** keeps the main game's "homes need green space" half (a tree touching the house); "farms need water" was left out to keep one rule per mechanic.
+- **Visitors** choose house or veg patch (4 of each, the first always a veg patch so bees appear early); the child chooses where, and which nature piece.
+- **Art** is drawn with Phaser graphics in bold cartoon shapes instead of pixel sprites, for legibility on a tablet.
+
+Balance and open questions are in `LITTLE.md`.
+
 Open questions and future work are in `TODO.md`.
