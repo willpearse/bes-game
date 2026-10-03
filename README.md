@@ -15,6 +15,10 @@ npm run simulate -- --trace --bot repair --map millValley --seed 5   # one game,
 npm run payoff -- --games 300               # building pay-off with and without nature, vs theory
 ```
 
+## Little Green (for reception-age children)
+
+A bright, simplified version at `little.html` (http://localhost:8080/little.html with `npm run dev`; `little.html` next to `index.html` once deployed). It keeps only pollination, mucky water and heatwaves, talks instead of using text, and ends with up to three stars. See `LITTLE.md`.
+
 ## How you win
 
 Each game lasts 24 turns. Your score is the GDP you earned (after waste bills, fertiliser, food bought and event damage), plus £50 for each objective met, minus £10 for each resident short of the map's housing target. The end screen also awards a medal:

@@ -17,6 +17,7 @@ When a rule is fun but teaches the wrong lesson, or teaches the right lesson but
 - `MECHANICS.md`: one-page summary of the current rules: how buildings, habitats, services and harms reach the score, and what each mechanic teaches. Keep it up to date when rules change.
 - `TODO.md`: designer requests for later, balance issues, open questions. Add new open questions here, not in NOTES.
 - `README.md`: how to run, variants, controls, deploying.
+- `LITTLE.md`: Little Green, the simplified game for reception-age children (`little.html`, `src/little/`). Same rules apply to its engine: pure, seeded, plain JSON, numbers in `src/little/data/`, Vitest tests.
 
 ## Commands
 
@@ -32,6 +33,7 @@ npm run simulate -- --trace --bot greedy --map millValley --seed 5   # one game,
 npm run simulate -- --games 100 --bot repair --set wasteBillMax=1  # try a CONFIG number without editing files
 npm run payoff -- --games 300                  # building pay-off by touching nature, observed vs theory
 node scripts/draw-sprites.js                   # regenerate src/art/sprites.js
+node scripts/little-sim.js --games 500         # Little Green: stars earned by random, half-careful and sensible play
 ```
 
 Pushing to `main` or the working branch runs `.github/workflows/pages.yml` (test, build, deploy to GitHub Pages).
@@ -77,7 +79,8 @@ src/
                        Game (board, overlays, animations), UI (HUD, market, inspector, modals), End
   ui/                  layout.js (positions, RES, camera helpers), widgets.js (text, button, panel),
                        prefs.js (URL flags, localStorage: scores, hints, settings), describe.js
-tests/                 Vitest; helpers.js has tinyGame() for small hand-made maps; features.test.js covers
+  little/              Little Green (see LITTLE.md): engine/, data/, art/, scenes/, voice, sound
+tests/                 Vitest (tests/little/ for Little Green); helpers.js has tinyGame() for small hand-made maps; features.test.js covers
                        bare ground, reefs, soil, wrecked tiles, new objectives and medals
 scripts/               bots.js, simulate.js, payoff.js (balance tools), draw-sprites.js (art generator)
 reports/               saved balance reports (generated; regenerate rather than edit)

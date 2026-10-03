@@ -1,0 +1,10 @@
+{
+  "name": "Little garden",
+  "legend": { "g": "grass", "s": "stream", "D": "stream with the duck", "H": "grass with a house" },
+  "rows": [
+    "gggggggg",
+    "gHgggggg",
+    "gggggsss",
+    "ssDsssgg"
+  ]
+}

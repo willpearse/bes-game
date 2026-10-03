@@ -16,6 +16,8 @@ export default defineConfig({
   define: { __COMMIT__: JSON.stringify(commitSha()) },
   build: {
     outDir: 'dist',
+    // Two pages: the main game, and Little Green for reception-age children.
+    rolldownOptions: { input: { main: 'index.html', little: 'little.html' } },
     chunkSizeWarningLimit: 2000
   },
   server: { port: 8080 }
